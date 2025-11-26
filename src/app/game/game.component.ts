@@ -1375,7 +1375,7 @@ export class GameComponent implements OnInit, OnDestroy {
   }
   
   cleanupLocalStorage() {
-    // Clear all leaderboard data
+    // Clear all leaderboard data (run once to reset)
     localStorage.removeItem('bulletHellLeaderboard');
     this.leaderboard = [];
   }
