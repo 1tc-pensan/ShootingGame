@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, fromEvent } from 'rxjs';
 
 interface Player {
@@ -1247,6 +1248,11 @@ export class GameComponent implements OnInit, OnDestroy {
   
   @ViewChild('miniMapCanvas') miniMapRef?: ElementRef<HTMLCanvasElement>;
   
+  private http = inject(HttpClient);
+  private apiUrl = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api' 
+    : '/.netlify/functions';
+  
   keys: { [key: string]: boolean } = {};
   mouseX: number = 0;
   mouseY: number = 0;
@@ -2247,10 +2253,19 @@ export class GameComponent implements OnInit, OnDestroy {
   }
   
   loadLeaderboard() {
-    const saved = localStorage.getItem('bulletHellLeaderboard');
-    if (saved) {
-      this.leaderboard = JSON.parse(saved);
-    }
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard`)
+      .subscribe({
+        next: (data) => {
+          this.leaderboard = data.slice(0, 10);
+        },
+        error: (err) => {
+          console.error('Failed to load leaderboard from server, using localStorage:', err);
+          const saved = localStorage.getItem('bulletHellLeaderboard');
+          if (saved) {
+            this.leaderboard = JSON.parse(saved);
+          }
+        }
+      });
   }
   
   saveLeaderboard() {
@@ -2262,26 +2277,46 @@ export class GameComponent implements OnInit, OnDestroy {
       this.playerName = 'Anonymous';
     }
     
-    const entry: LeaderboardEntry = {
+    const entry = {
       name: this.playerName.trim(),
       score: this.score,
       wave: this.wave,
-      kills: this.kills,
-      date: new Date().toISOString()
+      kills: this.kills
     };
     
-    this.leaderboard.push(entry);
-    this.leaderboard.sort((a, b) => b.score - a.score);
-    this.leaderboard = this.leaderboard.slice(0, 10); // Top 10
-    
-    this.saveLeaderboard();
-    this.playerNameSubmitted = true;
-    this.justSubmitted = true;
-    this.showLeaderboard = true;
-    
-    setTimeout(() => {
-      this.justSubmitted = false;
-    }, 3000);
+    this.http.post<{ success: boolean, leaderboard: LeaderboardEntry[] }>(
+      `${this.apiUrl}/leaderboard`,
+      entry
+    ).subscribe({
+      next: (response) => {
+        this.leaderboard = response.leaderboard;
+        this.playerNameSubmitted = true;
+        this.justSubmitted = true;
+        this.showLeaderboard = true;
+        
+        setTimeout(() => {
+          this.justSubmitted = false;
+        }, 3000);
+      },
+      error: (err) => {
+        console.error('Failed to save to server, using localStorage:', err);
+        const entryWithDate: LeaderboardEntry = {
+          ...entry,
+          date: new Date().toISOString()
+        };
+        this.leaderboard.push(entryWithDate);
+        this.leaderboard.sort((a, b) => b.score - a.score);
+        this.leaderboard = this.leaderboard.slice(0, 10);
+        this.saveLeaderboard();
+        this.playerNameSubmitted = true;
+        this.justSubmitted = true;
+        this.showLeaderboard = true;
+        
+        setTimeout(() => {
+          this.justSubmitted = false;
+        }, 3000);
+      }
+    });
   }
   
   toggleLeaderboard() {
