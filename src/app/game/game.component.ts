@@ -158,8 +158,10 @@ interface WeaponUpgrade {
           <div class="ultimate-bg">
             <div class="ultimate-fill" [style.width.%]="(ultimateCharge / ultimateMaxCharge) * 100"></div>
           </div>
-          <div class="ultimate-key" [class.ready]="ultimateCharge >= ultimateMaxCharge">
-            {{ ultimateCharge >= ultimateMaxCharge ? 'Q - READY!' : 'Q - ' + ultimateCharge + '/' + ultimateMaxCharge }}
+          <div class="ultimate-key" [class.ready]="ultimateCharge >= ultimateMaxCharge && ultimateCooldown === 0">
+            <span *ngIf="ultimateCooldown > 0">Q - CD: {{ (ultimateCooldown / 60).toFixed(1) }}s</span>
+            <span *ngIf="ultimateCooldown === 0 && ultimateCharge >= ultimateMaxCharge">Q - READY!</span>
+            <span *ngIf="ultimateCooldown === 0 && ultimateCharge < ultimateMaxCharge">Q - {{ ultimateCharge }}/{{ ultimateMaxCharge }}</span>
           </div>
         </div>
       </div>
@@ -1232,6 +1234,7 @@ export class GameComponent implements OnInit, OnDestroy {
   ultimateMaxCharge: number = 100;
   ultimateActive: boolean = false;
   ultimateDuration: number = 0;
+  ultimateCooldown: number = 0;
   
   dashCooldown: number = 0;
   dashDuration: number = 0;
@@ -1358,6 +1361,7 @@ export class GameComponent implements OnInit, OnDestroy {
     this.ultimateCharge = 0;
     this.ultimateActive = false;
     this.ultimateDuration = 0;
+    this.ultimateCooldown = 0;
     this.dashCooldown = 0;
     this.dashDuration = 0;
     this.weaponLevel = 1;
@@ -1413,6 +1417,11 @@ export class GameComponent implements OnInit, OnDestroy {
         this.ultimateActive = false;
         this.playerFireRate = 150;
       }
+    }
+    
+    // Ultimate cooldown
+    if (this.ultimateCooldown > 0) {
+      this.ultimateCooldown--;
     }
     
     // Dash cooldown
@@ -1671,7 +1680,9 @@ export class GameComponent implements OnInit, OnDestroy {
     }
     
     this.bossSpawned = false;
-    const enemyCount = 3 + this.wave * 2;
+    const baseEnemies = 3;
+    const waveMultiplier = Math.min(this.wave * 1.5, 20); // Harder scaling, max 20x
+    const enemyCount = Math.floor(baseEnemies + waveMultiplier);
     
     for (let i = 0; i < enemyCount; i++) {
       const rand = Math.random();
@@ -1697,6 +1708,11 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     
     const config = configs[type];
+    
+    // Wave scaling
+    const healthScale = 1 + (this.wave - 1) * 0.2; // +20% HP per wave
+    const speedScale = 1 + (this.wave - 1) * 0.08; // +8% speed per wave
+    
     const side = Math.floor(Math.random() * 4);
     let x = 0, y = 0;
     
@@ -1716,9 +1732,9 @@ export class GameComponent implements OnInit, OnDestroy {
       x, y,
       width: config.width,
       height: config.height,
-      health: config.health,
-      maxHealth: config.health,
-      speed: config.speed,
+      health: Math.floor(config.health * healthScale),
+      maxHealth: Math.floor(config.health * healthScale),
+      speed: config.speed * speedScale,
       type,
       shootTimer: 0,
       movePattern: 0
@@ -1726,13 +1742,17 @@ export class GameComponent implements OnInit, OnDestroy {
   }
   
   spawnBoss() {
+    const bossIteration = Math.floor(this.wave / 5);
+    const healthScale = 1 + bossIteration * 0.8; // +80% HP per boss iteration
+    const baseHealth = 1000;
+    
     this.enemies.push({
       x: this.canvasWidth / 2 - 75,
       y: -150,
       width: 150,
       height: 150,
-      health: 1000 + this.wave * 200,
-      maxHealth: 1000 + this.wave * 200,
+      health: Math.floor(baseHealth * healthScale + this.wave * 100),
+      maxHealth: Math.floor(baseHealth * healthScale + this.wave * 100),
       speed: 1,
       type: 'boss',
       shootTimer: 0,
@@ -1927,11 +1947,12 @@ export class GameComponent implements OnInit, OnDestroy {
   }
   
   activateUltimate() {
-    if (this.ultimateCharge < this.ultimateMaxCharge || this.ultimateActive) return;
+    if (this.ultimateCharge < this.ultimateMaxCharge || this.ultimateActive || this.ultimateCooldown > 0) return;
     
     this.ultimateActive = true;
     this.ultimateDuration = 300; // 5 seconds
     this.ultimateCharge = 0;
+    this.ultimateCooldown = 900; // 15 seconds cooldown
     this.playerFireRate = 50; // Super fast fire rate
     this.screenShake = 15;
     
