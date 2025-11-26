@@ -744,31 +744,54 @@ interface WeaponUpgrade {
       left: 50%;
       transform: translate(-50%, -50%);
       background: rgba(10, 10, 30, 0.95);
-      padding: 50px;
+      padding: 30px;
       border: 4px solid #00ff00;
       border-radius: 20px;
       text-align: center;
       box-shadow: 0 0 50px rgba(0, 255, 0, 0.5);
       color: white;
-      max-width: 700px;
+      max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    
+    .instructions::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    .instructions::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+    }
+    
+    .instructions::-webkit-scrollbar-thumb {
+      background: #00ff00;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ff00;
+    }
+    
+    .instructions::-webkit-scrollbar-thumb:hover {
+      background: #00ff00;
+      box-shadow: 0 0 20px #00ff00;
     }
     
     .instructions h1 {
       color: #00ff00;
-      font-size: 2.5em;
-      margin-bottom: 30px;
+      font-size: 2em;
+      margin-bottom: 20px;
       text-shadow: 0 0 20px #00ff00;
     }
     
     .instructions h2 {
       color: #00ffff;
-      margin: 20px 0 10px 0;
+      margin: 15px 0 8px 0;
+      font-size: 1.3em;
       text-shadow: 0 0 10px #00ffff;
     }
     
     .instructions p {
-      margin: 8px 0;
-      font-size: 1.1em;
+      margin: 6px 0;
+      font-size: 0.95em;
     }
     
     .game-description {
