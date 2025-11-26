@@ -119,7 +119,7 @@ interface WeaponUpgrade {
       <div class="ad-banner-top" id="ad-banner-top">
         <ins class="adsbygoogle"
              style="display:block"
-             data-ad-client="ca-pub-XXXXXXXXXXXXXXXXX"
+             data-ad-client="ca-pub-5062569894299417"
              data-ad-slot="1234567890"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
@@ -198,7 +198,7 @@ interface WeaponUpgrade {
         <div class="ad-interstitial" id="ad-interstitial">
           <ins class="adsbygoogle"
                style="display:block"
-               data-ad-client="ca-pub-XXXXXXXXXXXXXXXXX"
+               data-ad-client="ca-pub-5062569894299417"
                data-ad-slot="9876543210"
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
@@ -310,11 +310,27 @@ interface WeaponUpgrade {
       
       <div class="instructions" *ngIf="!gameStarted && !gameOver">
         <h1>🎮 BULLET HELL SURVIVOR 🎮</h1>
+        <div class="game-description">
+          <p><strong>Kemény bullet hell akció!</strong> Élj túl végtelen ellenséges hullámokat!</p>
+          <p>🎯 Különböző ellenség típusok • 💪 Boss minden 5. hullámban • ⚡ Power-upok és fejlesztések</p>
+        </div>
         <div class="controls">
           <h2>Controls:</h2>
           <p><strong>W A S D</strong> or <strong>Arrow Keys</strong> - Move</p>
           <p><strong>SPACE</strong> - Shoot</p>
           <p><strong>Mouse</strong> - Aim direction</p>
+          <p><strong>Q</strong> - Ultimate (15s cooldown)</p>
+          <p><strong>Shift</strong> - Dash</p>
+          <p><strong>E</strong> - Slow Motion (10+ kill streak)</p>
+        </div>
+        <div class="gameplay-info">
+          <h2>Gameplay:</h2>
+          <p>• Ölj ellenségeket és szerezz pontokat</p>
+          <p>• Minden 25 kill után fejlődik a fegyvered (max 5 shot)</p>
+          <p>• Tartsd fenn a combót a magasabb pontszámért (max 5x)</p>
+          <p>• Boss minden 5. hullámban - nehezedő kihívás!</p>
+          <p>• Power-upok: ❤️ Élet, ⚡ Sebesség, 🔫 Tűzgyorsaság, 🛡️ Pajzs</p>
+          <p>• A nehézség minden hullámmal nő (+20% HP, +8% sebesség)</p>
         </div>
         <div class="enemy-types">
           <h2>Enemy Types:</h2>
@@ -341,7 +357,7 @@ interface WeaponUpgrade {
     }
     
     .ad-banner-top {
-      width: 900px;
+      width: 1200px;
       min-height: 90px;
       background: rgba(0, 0, 0, 0.9);
       border-bottom: 2px solid #333;
@@ -734,7 +750,7 @@ interface WeaponUpgrade {
       text-align: center;
       box-shadow: 0 0 50px rgba(0, 255, 0, 0.5);
       color: white;
-      max-width: 600px;
+      max-width: 700px;
     }
     
     .instructions h1 {
@@ -755,9 +771,37 @@ interface WeaponUpgrade {
       font-size: 1.1em;
     }
     
-    .controls, .enemy-types {
+    .game-description {
+      background: rgba(0, 255, 0, 0.1);
+      border: 2px solid #00ff00;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .game-description p {
+      margin: 5px 0;
+      font-size: 1em;
+    }
+    
+    .game-description strong {
+      color: #00ff00;
+    }
+    
+    .controls, .enemy-types, .gameplay-info {
       margin: 20px 0;
       text-align: left;
+    }
+    
+    .gameplay-info {
+      background: rgba(0, 255, 255, 0.05);
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      padding: 15px;
+    }
+    
+    .gameplay-info p {
+      font-size: 0.95em;
     }
     
     .enemy-basic { color: #888; }
@@ -1197,12 +1241,12 @@ export class GameComponent implements OnInit, OnDestroy {
   // Expose Math to template
   Math = Math;
   
-  canvasWidth = 900;
-  canvasHeight = 700;
+  canvasWidth = 1200;
+  canvasHeight = 800;
   
   player: Player = {
-    x: 450,
-    y: 600,
+    x: 600,
+    y: 700,
     width: 40,
     height: 40,
     speed: 6,
@@ -1321,12 +1365,19 @@ export class GameComponent implements OnInit, OnDestroy {
   
   ngOnInit() {
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
+    this.cleanupLocalStorage(); // Clean duplicates on startup
     this.loadLeaderboard();
     this.initAchievements();
     this.loadAchievements();
     this.loadStats();
     this.loadAdSense();
     this.render();
+  }
+  
+  cleanupLocalStorage() {
+    // Clear all leaderboard data
+    localStorage.removeItem('bulletHellLeaderboard');
+    this.leaderboard = [];
   }
   
   startGame() {
@@ -2279,20 +2330,40 @@ export class GameComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data) => {
           console.log('Leaderboard loaded:', data);
-          this.leaderboard = data.slice(0, 10);
+          this.leaderboard = this.deduplicateLeaderboard(data).slice(0, 10);
         },
         error: (err) => {
           console.error('Failed to load leaderboard from server:', err);
           console.log('Using localStorage fallback');
           const saved = localStorage.getItem('bulletHellLeaderboard');
           if (saved) {
-            this.leaderboard = JSON.parse(saved);
+            this.leaderboard = this.deduplicateLeaderboard(JSON.parse(saved));
           }
         }
       });
   }
   
+  deduplicateLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+    const playerMap = new Map<string, LeaderboardEntry>();
+    
+    // Keep only the highest score for each player (case-insensitive)
+    entries.forEach(entry => {
+      const playerKey = entry.name.toLowerCase();
+      const existing = playerMap.get(playerKey);
+      
+      if (!existing || entry.score > existing.score) {
+        playerMap.set(playerKey, entry);
+      }
+    });
+    
+    // Convert back to array and sort by score
+    return Array.from(playerMap.values())
+      .sort((a, b) => b.score - a.score);
+  }
+  
   saveLeaderboard() {
+    // Deduplicate before saving
+    this.leaderboard = this.deduplicateLeaderboard(this.leaderboard);
     localStorage.setItem('bulletHellLeaderboard', JSON.stringify(this.leaderboard));
   }
   
@@ -2301,8 +2372,24 @@ export class GameComponent implements OnInit, OnDestroy {
       this.playerName = 'Anonymous';
     }
     
+    const playerName = this.playerName.trim();
+    
+    // Check if player already has a better score in localStorage
+    const saved = localStorage.getItem('bulletHellLeaderboard');
+    if (saved) {
+      const existingLeaderboard: LeaderboardEntry[] = JSON.parse(saved);
+      const existingEntry = existingLeaderboard.find(e => e.name.toLowerCase() === playerName.toLowerCase());
+      
+      if (existingEntry && existingEntry.score >= this.score) {
+        alert(`⚠️ You already have a better score (${existingEntry.score})! This score won't be saved.`);
+        this.playerNameSubmitted = true;
+        this.showLeaderboard = true;
+        return;
+      }
+    }
+    
     const entry = {
-      name: this.playerName.trim(),
+      name: playerName,
       score: this.score,
       wave: this.wave,
       kills: this.kills
@@ -2317,6 +2404,10 @@ export class GameComponent implements OnInit, OnDestroy {
       next: (response) => {
         console.log('Score submitted successfully:', response);
         this.leaderboard = response.leaderboard;
+        
+        // Update localStorage with the new leaderboard
+        this.saveLeaderboard();
+        
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
         this.showLeaderboard = true;
@@ -2327,11 +2418,25 @@ export class GameComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to save to server:', err);
+        
+        // Check if error is because player already has a better score
+        if (err.error && err.error.existingScore !== undefined) {
+          alert(`⚠️ You already have a better score (${err.error.existingScore})! This score won't be saved.`);
+          this.playerNameSubmitted = true;
+          this.showLeaderboard = true;
+          return;
+        }
+        
         console.log('Using localStorage fallback');
+        
         const entryWithDate: LeaderboardEntry = {
           ...entry,
           date: new Date().toISOString()
         };
+        
+        // Remove old entry from same player
+        this.leaderboard = this.leaderboard.filter(e => e.name.toLowerCase() !== playerName.toLowerCase());
+        
         this.leaderboard.push(entryWithDate);
         this.leaderboard.sort((a, b) => b.score - a.score);
         this.leaderboard = this.leaderboard.slice(0, 10);
@@ -2522,7 +2627,7 @@ export class GameComponent implements OnInit, OnDestroy {
     // Load AdSense script
     const script = document.createElement('script');
     script.async = true;
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXXX';
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5062569894299417';
     script.crossOrigin = 'anonymous';
     document.head.appendChild(script);
     

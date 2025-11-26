@@ -57,9 +57,29 @@ exports.handler = async (event) => {
       const data = await fs.readFile(DATA_FILE, 'utf8');
       let leaderboard = JSON.parse(data);
 
+      const playerName = name.substring(0, 15).toLowerCase();
+      const newScore = parseInt(score);
+      
+      // Check if player already has a better score
+      const existingEntry = leaderboard.find(e => e.name.toLowerCase() === playerName);
+      
+      if (existingEntry && existingEntry.score >= newScore) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Player already has a better score',
+            existingScore: existingEntry.score 
+          })
+        };
+      }
+      
+      // Remove old entry from same player
+      leaderboard = leaderboard.filter(e => e.name.toLowerCase() !== playerName);
+
       const newEntry = {
         name: name.substring(0, 15),
-        score: parseInt(score),
+        score: newScore,
         wave: parseInt(wave),
         kills: parseInt(kills),
         date: new Date().toISOString()
