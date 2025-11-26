@@ -1249,7 +1249,7 @@ export class GameComponent implements OnInit, OnDestroy {
   @ViewChild('miniMapCanvas') miniMapRef?: ElementRef<HTMLCanvasElement>;
   
   private http = inject(HttpClient);
-  private apiUrl = window.location.hostname === 'localhost' 
+  private apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
     ? 'http://localhost:3000/api' 
     : '/.netlify/functions';
   
@@ -2253,13 +2253,16 @@ export class GameComponent implements OnInit, OnDestroy {
   }
   
   loadLeaderboard() {
+    console.log('Loading leaderboard from:', `${this.apiUrl}/leaderboard`);
     this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard`)
       .subscribe({
         next: (data) => {
+          console.log('Leaderboard loaded:', data);
           this.leaderboard = data.slice(0, 10);
         },
         error: (err) => {
-          console.error('Failed to load leaderboard from server, using localStorage:', err);
+          console.error('Failed to load leaderboard from server:', err);
+          console.log('Using localStorage fallback');
           const saved = localStorage.getItem('bulletHellLeaderboard');
           if (saved) {
             this.leaderboard = JSON.parse(saved);
@@ -2284,11 +2287,14 @@ export class GameComponent implements OnInit, OnDestroy {
       kills: this.kills
     };
     
+    console.log('Submitting score to:', `${this.apiUrl}/leaderboard`, entry);
+    
     this.http.post<{ success: boolean, leaderboard: LeaderboardEntry[] }>(
       `${this.apiUrl}/leaderboard`,
       entry
     ).subscribe({
       next: (response) => {
+        console.log('Score submitted successfully:', response);
         this.leaderboard = response.leaderboard;
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
@@ -2299,7 +2305,8 @@ export class GameComponent implements OnInit, OnDestroy {
         }, 3000);
       },
       error: (err) => {
-        console.error('Failed to save to server, using localStorage:', err);
+        console.error('Failed to save to server:', err);
+        console.log('Using localStorage fallback');
         const entryWithDate: LeaderboardEntry = {
           ...entry,
           date: new Date().toISOString()
