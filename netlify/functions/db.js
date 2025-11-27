@@ -2,7 +2,11 @@ const { neon } = require('@neondatabase/serverless');
 
 // Get database URL from environment variable
 const getDatabaseUrl = () => {
-  return process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
+  // Try multiple environment variable names that Netlify/Neon might use
+  return process.env.DATABASE_URL || 
+         process.env.NETLIFY_DATABASE_URL || 
+         process.env.NEON_DATABASE_URL ||
+         process.env.POSTGRES_URL;
 };
 
 let sql = null;
