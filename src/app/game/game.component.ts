@@ -3249,8 +3249,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                        enemy.x, enemy.y, enemy.width, enemy.height)) {
             const damage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
             
-            // Critical hit chance (15%)
-            const isCritical = Math.random() < 0.15;
+            // Critical hit chance (5%)
+            const isCritical = Math.random() < 0.05;
             const finalDamage = isCritical ? damage * 2 : damage;
             
             enemy.health -= finalDamage;
