@@ -697,12 +697,18 @@ interface WeaponUpgrade {
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       border: 3px solid #00ff00;
       border-radius: 10px;
       padding: 10px;
       box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
       z-index: 100;
+      transition: all 0.3s ease;
+    }
+    
+    .mini-map:hover {
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+      transform: scale(1.05);
     }
     
     .mini-map-title {
@@ -712,11 +718,15 @@ interface WeaponUpgrade {
       margin-bottom: 5px;
       font-size: 0.9em;
       text-shadow: 0 0 5px #00ff00;
+      letter-spacing: 2px;
     }
     
     .mini-map canvas {
       border: 1px solid #00ff00;
       background: #000;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
     }
     
     canvas {
@@ -1599,7 +1609,17 @@ interface WeaponUpgrade {
       .mini-map {
         bottom: 10px;
         right: 10px;
-        transform: scale(0.8);
+        transform: scale(0.85);
+        transform-origin: bottom right;
+        padding: 8px;
+      }
+      
+      .mini-map:hover {
+        transform: scale(0.9);
+      }
+      
+      .mini-map-title {
+        font-size: 0.8em;
       }
     }
     
@@ -2810,32 +2830,58 @@ export class GameComponent implements OnInit, OnDestroy {
     const miniCtx = this.miniMapRef.nativeElement.getContext('2d');
     if (!miniCtx) return;
     
-    const scale = 150 / this.canvasWidth;
+    const miniMapWidth = 150;
+    const miniMapHeight = 150;
+    
+    // Calculate scales based on actual canvas dimensions
+    const scaleX = miniMapWidth / this.canvasWidth;
+    const scaleY = miniMapHeight / this.canvasHeight;
     
     // Clear
     miniCtx.fillStyle = '#000';
-    miniCtx.fillRect(0, 0, 150, 150);
+    miniCtx.fillRect(0, 0, miniMapWidth, miniMapHeight);
     
-    // Player
+    // Player (larger and centered)
+    const playerX = this.player.x * scaleX;
+    const playerY = this.player.y * scaleY;
     miniCtx.fillStyle = '#00ff00';
-    miniCtx.fillRect(this.player.x * scale, this.player.y * scale * (150 / this.canvasHeight), 5, 5);
+    miniCtx.shadowBlur = 5;
+    miniCtx.shadowColor = '#00ff00';
+    miniCtx.fillRect(playerX - 3, playerY - 3, 6, 6);
+    miniCtx.shadowBlur = 0;
     
     // Enemies
     this.enemies.forEach(enemy => {
+      const enemyX = enemy.x * scaleX;
+      const enemyY = enemy.y * scaleY;
+      
       if (enemy.type === 'boss') {
         miniCtx.fillStyle = '#ff0000';
-        miniCtx.fillRect(enemy.x * scale, enemy.y * scale * (150 / this.canvasHeight), 8, 8);
+        miniCtx.shadowBlur = 8;
+        miniCtx.shadowColor = '#ff0000';
+        miniCtx.fillRect(enemyX - 4, enemyY - 4, 8, 8);
+        miniCtx.shadowBlur = 0;
       } else {
         miniCtx.fillStyle = '#ff6600';
-        miniCtx.fillRect(enemy.x * scale, enemy.y * scale * (150 / this.canvasHeight), 3, 3);
+        miniCtx.fillRect(enemyX - 1.5, enemyY - 1.5, 3, 3);
       }
     });
     
     // Power-ups
     this.powerUps.forEach(powerUp => {
+      const powerUpX = powerUp.x * scaleX;
+      const powerUpY = powerUp.y * scaleY;
       miniCtx.fillStyle = '#ffd700';
-      miniCtx.fillRect(powerUp.x * scale, powerUp.y * scale * (150 / this.canvasHeight), 2, 2);
+      miniCtx.shadowBlur = 3;
+      miniCtx.shadowColor = '#ffd700';
+      miniCtx.fillRect(powerUpX - 1, powerUpY - 1, 2, 2);
+      miniCtx.shadowBlur = 0;
     });
+    
+    // Draw border
+    miniCtx.strokeStyle = '#00ff00';
+    miniCtx.lineWidth = 1;
+    miniCtx.strokeRect(0, 0, miniMapWidth, miniMapHeight);
   }
   
   loadLeaderboard() {
