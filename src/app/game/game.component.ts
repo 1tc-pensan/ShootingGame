@@ -2860,33 +2860,53 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     switch (type) {
       case 'health':
         this.player.health = Math.min(this.player.maxHealth, this.player.health + 30);
+        this.screenFlash = 0.2;
+        this.screenFlashColor = '#00ff00';
         break;
       case 'speed':
-        this.playerSpeed = 9;
+        // Only apply if not already active
+        if (this.playerSpeed !== 9) {
+          this.playerSpeed = 9;
+        }
         this.addActivePowerUp(type, 600);
+        this.screenFlash = 0.2;
+        this.screenFlashColor = '#00ffff';
         break;
       case 'firerate':
-        this.playerFireRate = 75;
+        // Only apply if not already active
+        if (this.playerFireRate !== 75) {
+          this.playerFireRate = 75;
+        }
         this.addActivePowerUp(type, 600);
+        this.screenFlash = 0.2;
+        this.screenFlashColor = '#ffff00';
         break;
       case 'shield':
         this.hasShield = true;
         this.addActivePowerUp(type, 300);
+        this.screenFlash = 0.2;
+        this.screenFlashColor = '#8a2be2';
         break;
     }
   }
   
   addActivePowerUp(type: PowerUp['type'], duration: number) {
-    // Remove existing if present
+    // Remove existing if present and reset values first
     const existing = this.activePowerUps.findIndex(p => p.type === type);
     if (existing >= 0) {
+      // Just refresh duration, don't re-apply effect
       this.activePowerUps[existing].duration = duration;
     } else {
+      // New power-up
       this.activePowerUps.push({ type, duration });
     }
   }
   
   removePowerUpEffect(type: PowerUp['type']) {
+    // Only remove if no other instance is active
+    const stillActive = this.activePowerUps.some(p => p.type === type && p.duration > 0);
+    if (stillActive) return;
+    
     switch (type) {
       case 'speed':
         this.playerSpeed = 6;
