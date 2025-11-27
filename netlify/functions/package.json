@@ -1,8 +1,0 @@
-{
-  "name": "netlify-functions",
-  "version": "1.0.0",
-  "description": "Netlify serverless functions for game backend",
-  "dependencies": {
-    "@neondatabase/serverless": "^0.9.0"
-  }
-}
