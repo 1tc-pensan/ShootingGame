@@ -118,6 +118,20 @@ interface WeaponUpgrade {
   bulletSize: number;
 }
 
+interface Weapon {
+  id: string;
+  name: string;
+  description: string;
+  fireRate: number;
+  bulletCount: number;
+  bulletSpeed: number;
+  bulletSize: number;
+  damage: number;
+  spreadAngle: number;
+  color: string;
+  specialEffect?: 'explosive' | 'pierce' | 'homing' | 'freeze';
+}
+
 interface ColorOption {
   name: string;
   value: string;
@@ -196,6 +210,19 @@ interface ColorOption {
         <div class="slow-motion-info" *ngIf="killStreak >= 10">
           <span *ngIf="slowMotionCooldown > 0">⏱️ E - CD: {{ (slowMotionCooldown / 60).toFixed(1) }}s</span>
           <span *ngIf="slowMotionCooldown === 0" class="ready">⏱️ E - READY!</span>
+        </div>
+        
+        <div class="weapon-selector">
+          <div class="weapon-label">Fegyver:</div>
+          <div class="weapon-buttons">
+            <button *ngFor="let weapon of weapons" 
+                    (click)="selectWeapon(weapon)"
+                    [class.active]="currentWeapon.id === weapon.id"
+                    class="weapon-btn">
+              {{ weapon.name }}
+            </button>
+          </div>
+          <div class="weapon-description">{{ currentWeapon.description }}</div>
         </div>
       </div>
       
@@ -857,6 +884,65 @@ interface ColorOption {
       color: #00ff00;
       text-shadow: 0 0 15px #00ff00;
       animation: pulse 0.5s ease-in-out infinite;
+    }
+    
+    .weapon-selector {
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 10px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    
+    .weapon-label {
+      color: #00ffff;
+      font-weight: bold;
+      font-size: 1em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px #00ffff;
+    }
+    
+    .weapon-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .weapon-btn {
+      background: rgba(50, 50, 50, 0.9);
+      border: 2px solid #666;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    
+    .weapon-btn:hover {
+      background: rgba(80, 80, 80, 0.9);
+      border-color: #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+      transform: translateY(-2px);
+    }
+    
+    .weapon-btn.active {
+      background: rgba(0, 255, 255, 0.3);
+      border-color: #00ffff;
+      color: #00ffff;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+      text-shadow: 0 0 10px #00ffff;
+    }
+    
+    .weapon-description {
+      color: #aaa;
+      font-size: 0.85em;
+      text-align: center;
+      font-style: italic;
     }
     
     .mini-map {
@@ -2308,6 +2394,83 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   lastShot: number = 0;
   shootCooldown: number = 150;
+  
+  // Weapon system
+  weapons: Weapon[] = [
+    {
+      id: 'pistol',
+      name: '🔫 Pisztoly',
+      description: 'Gyors tüzelés, közepes sebzés',
+      fireRate: 150,
+      bulletCount: 1,
+      bulletSpeed: 12,
+      bulletSize: 4,
+      damage: 25,
+      spreadAngle: 0,
+      color: '#00ffff'
+    },
+    {
+      id: 'shotgun',
+      name: '💥 Sörétes',
+      description: 'Lassú tüzelés, sok lövedék',
+      fireRate: 500,
+      bulletCount: 8,
+      bulletSpeed: 10,
+      bulletSize: 3,
+      damage: 15,
+      spreadAngle: 0.4,
+      color: '#ff8800'
+    },
+    {
+      id: 'rifle',
+      name: '🎯 Puska',
+      description: 'Magas sebzés, pontos',
+      fireRate: 300,
+      bulletCount: 1,
+      bulletSpeed: 18,
+      bulletSize: 5,
+      damage: 60,
+      spreadAngle: 0,
+      color: '#ff00ff'
+    },
+    {
+      id: 'minigun',
+      name: '⚡ Minigun',
+      description: 'Nagyon gyors tüzelés, alacsony sebzés',
+      fireRate: 60,
+      bulletCount: 1,
+      bulletSpeed: 14,
+      bulletSize: 3,
+      damage: 12,
+      spreadAngle: 0.1,
+      color: '#ffff00'
+    },
+    {
+      id: 'burst',
+      name: '💫 Sorozat',
+      description: '3 lövedékes sorozat',
+      fireRate: 400,
+      bulletCount: 3,
+      bulletSpeed: 15,
+      bulletSize: 4,
+      damage: 30,
+      spreadAngle: 0.15,
+      color: '#00ff88'
+    },
+    {
+      id: 'sniper',
+      name: '🎪 Mesterlövész',
+      description: 'Lassú, brutális sebzés',
+      fireRate: 800,
+      bulletCount: 1,
+      bulletSpeed: 25,
+      bulletSize: 6,
+      damage: 150,
+      spreadAngle: 0,
+      color: '#ff0088'
+    }
+  ];
+  currentWeapon: Weapon = this.weapons[0];
   waveSpawnTimer: number = 0;
   bossSpawned: boolean = false;
   
@@ -2893,7 +3056,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   shootBullet() {
     const now = Date.now();
-    if (now - this.lastShot < this.playerFireRate) return;
+    const weaponFireRate = Math.max(50, this.currentWeapon.fireRate - this.weaponLevel * 10);
+    if (now - this.lastShot < weaponFireRate) return;
     
     const dx = this.mouseX - (this.player.x + this.player.width / 2);
     const dy = this.mouseY - (this.player.y + this.player.height / 2);
@@ -2901,26 +3065,29 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     if (dist > 0) {
       const baseAngle = Math.atan2(dy, dx);
-      const bulletCount = Math.min(1 + Math.floor(this.weaponLevel / 2), 5);
-      const spreadAngle = 0.2;
+      const bulletCount = this.currentWeapon.bulletCount + Math.floor(this.weaponLevel / 3);
       
       for (let i = 0; i < bulletCount; i++) {
-        const offset = (i - (bulletCount - 1) / 2) * spreadAngle;
+        const offset = (i - (bulletCount - 1) / 2) * this.currentWeapon.spreadAngle;
         const angle = baseAngle + offset;
         
         this.bullets.push({
           x: this.player.x + this.player.width / 2,
           y: this.player.y + this.player.height / 2,
-          vx: Math.cos(angle) * 12,
-          vy: Math.sin(angle) * 12,
-          radius: 4 + this.weaponLevel * 0.5,
-          damage: 25 + this.weaponLevel * 5,
+          vx: Math.cos(angle) * this.currentWeapon.bulletSpeed,
+          vy: Math.sin(angle) * this.currentWeapon.bulletSpeed,
+          radius: this.currentWeapon.bulletSize + this.weaponLevel * 0.3,
+          damage: this.currentWeapon.damage + this.weaponLevel * 5,
           fromPlayer: true
         });
       }
       
       this.lastShot = now;
     }
+  }
+  
+  selectWeapon(weapon: Weapon) {
+    this.currentWeapon = weapon;
   }
   
   spawnWave() {
@@ -3603,9 +3770,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Bullets
     this.bullets.forEach(bullet => {
-      this.ctx.fillStyle = bullet.fromPlayer ? '#00ffff' : '#ff0000';
+      this.ctx.fillStyle = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
       this.ctx.shadowBlur = 10;
-      this.ctx.shadowColor = bullet.fromPlayer ? '#00ffff' : '#ff0000';
+      this.ctx.shadowColor = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
       this.ctx.beginPath();
       this.ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
       this.ctx.fill();
