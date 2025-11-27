@@ -1991,6 +1991,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   lastKillTime: number = 0;
   slowMotion: number = 0;
   waveDamageTaken: boolean = false;
+  recentKills: number[] = []; // Track timestamps of recent kills for Speed Demon achievement
   
   adWatched: boolean = false;
   adTimer: number = 5;
@@ -2293,6 +2294,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.waveSpawnTimer = 0;
     this.bossSpawned = false;
     this.waveDamageTaken = false;
+    this.recentKills = [];
     this.playerName = '';
     this.playerNameSubmitted = false;
     this.showLeaderboard = false;
@@ -2771,6 +2773,20 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               this.killStreak++;
               this.lastKillTime = Date.now();
               
+              // Kill streak achievement
+              if (this.killStreak >= 10) {
+                this.unlockAchievement('unstoppable');
+              }
+              
+              // Speed Demon achievement: 10 kills in 5 seconds
+              const now = Date.now();
+              this.recentKills.push(now);
+              // Remove kills older than 5 seconds
+              this.recentKills = this.recentKills.filter(time => now - time <= 5000);
+              if (this.recentKills.length >= 10) {
+                this.unlockAchievement('speed_demon');
+              }
+              
               // Weapon upgrade every 25 kills
               const newLevel = Math.floor(this.kills / 25) + 1;
               if (newLevel > this.weaponLevel) {
@@ -2788,6 +2804,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               this.combo.count++;
               this.combo.timer = 180; // 3 seconds
               this.combo.multiplier = Math.min(5, 1 + Math.floor(this.combo.count / 5) * 0.5);
+              
+              // Combo achievements
+              if (this.combo.count >= 3) {
+                this.unlockAchievement('combo_starter');
+              }
+              if (this.combo.count >= 5) {
+                this.unlockAchievement('combo_master');
+              }
               
               const baseScore = enemy.type === 'boss' ? 1000 : 
                            enemy.type === 'tank' ? 100 : 
