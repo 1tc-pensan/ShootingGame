@@ -1,18 +1,12 @@
-const fs = require('fs').promises;
-const path = require('path');
-
-const DATA_FILE = '/tmp/leaderboard.json';
+const { initDB, getDB, cleanExpiredSessions } = require('./db');
 
 async function initLeaderboard() {
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify([]));
-  }
+  await initDB();
 }
 
 exports.handler = async (event) => {
   await initLeaderboard();
+  const sql = getDB();
   
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -24,42 +18,42 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod === 'GET') {
-    try {
+  try {
+    if (event.httpMethod === 'GET') {
       const type = event.queryStringParameters?.type; // '24h' or 'alltime'
-      const data = await fs.readFile(DATA_FILE, 'utf8');
-      let leaderboard = JSON.parse(data);
       
-      // Filter by 24h if requested
+      let scores;
+      
       if (type === '24h') {
-        const now = new Date().getTime();
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-        leaderboard = leaderboard.filter(entry => {
-          if (!entry.date) return false;
-          const entryTime = new Date(entry.date).getTime();
-          return (now - entryTime) <= twentyFourHours;
-        });
+        scores = await sql`
+          SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM scores s
+          JOIN users u ON s.user_id = u.id
+          WHERE s.created_at >= NOW() - INTERVAL '1 day'
+          ORDER BY s.score DESC
+          LIMIT 10
+        `;
+      } else {
+        scores = await sql`
+          SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM scores s
+          JOIN users u ON s.user_id = u.id
+          ORDER BY s.score DESC
+          LIMIT 10
+        `;
       }
       
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(leaderboard.slice(0, 10))
-      };
-    } catch (error) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Failed to read leaderboard' })
+        body: JSON.stringify(scores || [])
       };
     }
-  }
 
-  if (event.httpMethod === 'POST') {
-    try {
-      const { name, score, wave, kills } = JSON.parse(event.body);
+    if (event.httpMethod === 'POST') {
+      const { token, score, wave, kills } = JSON.parse(event.body);
       
-      if (!name || score === undefined) {
+      if (!token || score === undefined) {
         return {
           statusCode: 400,
           headers,
@@ -67,63 +61,82 @@ exports.handler = async (event) => {
         };
       }
 
-      const data = await fs.readFile(DATA_FILE, 'utf8');
-      let leaderboard = JSON.parse(data);
+      // Clean expired sessions
+      await cleanExpiredSessions();
 
-      const playerName = name.substring(0, 15).toLowerCase();
+      // Verify token and get user
+      const sessions = await sql`
+        SELECT s.user_id, u.username 
+        FROM sessions s 
+        JOIN users u ON s.user_id = u.id 
+        WHERE s.token = ${token} AND s.expires_at > NOW()
+      `;
+
+      if (sessions.length === 0) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Invalid or expired token' })
+        };
+      }
+
+      const userId = sessions[0].user_id;
       const newScore = parseInt(score);
-      
+
       // Check if player already has a better score
-      const existingEntry = leaderboard.find(e => e.name.toLowerCase() === playerName);
-      
-      if (existingEntry && existingEntry.score >= newScore) {
+      const maxScores = await sql`
+        SELECT MAX(score) as maxScore 
+        FROM scores 
+        WHERE user_id = ${userId}
+      `;
+
+      if (maxScores[0] && maxScores[0].maxscore >= newScore) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({ 
-            error: 'Player already has a better score',
-            existingScore: existingEntry.score 
+            error: 'You already have a better score',
+            existingScore: maxScores[0].maxscore 
           })
         };
       }
-      
-      // Remove old entry from same player
-      leaderboard = leaderboard.filter(e => e.name.toLowerCase() !== playerName);
 
-      const newEntry = {
-        name: name.substring(0, 15),
-        score: newScore,
-        wave: parseInt(wave),
-        kills: parseInt(kills),
-        date: new Date().toISOString()
-      };
+      // Insert new score
+      await sql`
+        INSERT INTO scores (user_id, score, wave, kills) 
+        VALUES (${userId}, ${newScore}, ${parseInt(wave)}, ${parseInt(kills)})
+      `;
 
-      leaderboard.push(newEntry);
-      leaderboard.sort((a, b) => b.score - a.score);
-      leaderboard = leaderboard.slice(0, 50);
+      // Get updated leaderboard
+      const leaderboard = await sql`
+        SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+        FROM scores s
+        JOIN users u ON s.user_id = u.id
+        ORDER BY s.score DESC 
+        LIMIT 10
+      `;
 
-      await fs.writeFile(DATA_FILE, JSON.stringify(leaderboard));
-      
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ 
           success: true, 
-          leaderboard: leaderboard.slice(0, 10) 
+          leaderboard: leaderboard 
         })
       };
-    } catch (error) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Failed to save score' })
-      };
     }
-  }
 
-  return {
-    statusCode: 405,
-    headers,
-    body: JSON.stringify({ error: 'Method not allowed' })
-  };
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal server error' })
+    };
+  }
 };

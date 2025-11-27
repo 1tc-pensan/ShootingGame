@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, fromEvent } from 'rxjs';
+import { AuthService } from '../auth/auth.service';
 
 interface Player {
   x: number;
@@ -225,16 +226,15 @@ interface ColorOption {
           <p>Final Score: <strong>{{ score }}</strong></p>
           <p>Wave Reached: <strong>{{ wave }}</strong></p>
           <p>Enemies Killed: <strong>{{ kills }}</strong></p>
+          <p *ngIf="isLoggedIn">Player: <strong>{{ currentUsername }}</strong></p>
         </div>
-        <div class="name-input" *ngIf="!playerNameSubmitted">
-          <input 
-            type="text" 
-            [(ngModel)]="playerName" 
-            placeholder="Enter your name"
-            maxlength="15"
-            (keyup.enter)="submitScore()"
-            #nameInput>
-          <button (click)="submitScore()" class="submit-btn">SUBMIT SCORE</button>
+        <div class="submit-score-section" *ngIf="!playerNameSubmitted">
+          <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn">
+            💾 SAVE SCORE
+          </button>
+          <p class="auth-warning" *ngIf="!isLoggedIn">
+            ⚠️ Bejelentkezés szükséges a pontszám mentéséhez!
+          </p>
         </div>
         <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched">
           📺 Watch Ad to Continue
@@ -272,12 +272,12 @@ interface ColorOption {
           <div 
             *ngFor="let entry of (leaderboardType === '24h' ? leaderboard24h : leaderboardAllTime); let i = index" 
             class="leaderboard-entry"
-            [class.highlight]="entry.name === playerName && justSubmitted"
-            [class.current-player]="entry.name.toLowerCase() === playerName.toLowerCase()">
+            [class.highlight]="entry.name === currentUsername && justSubmitted"
+            [class.current-player]="entry.name.toLowerCase() === currentUsername.toLowerCase()">
             <span class="rank">{{ i + 1 }}</span>
             <span class="name">
               {{ entry.name }}
-              <span class="you-badge" *ngIf="entry.name.toLowerCase() === playerName.toLowerCase()"> (YOU)</span>
+              <span class="you-badge" *ngIf="entry.name.toLowerCase() === currentUsername.toLowerCase()"> (YOU)</span>
             </span>
             <span class="score-col">{{ entry.score }}</span>
             <span class="wave-col">{{ entry.wave }}</span>
@@ -369,6 +369,61 @@ interface ColorOption {
         <div class="game-description">
           <p><strong>Kemény bullet hell akció!</strong> Élj túl végtelen ellenséges hullámokat!</p>
           <p>🎯 Különböző ellenség típusok • 💪 Boss minden 5. hullámban • ⚡ Power-upok és fejlesztések</p>
+        </div>
+
+        <!-- Login/Register Section -->
+        <div class="auth-section" *ngIf="!isLoggedIn">
+          <h2>🔐 Bejelentkezés / Regisztráció</h2>
+          <div class="auth-tabs">
+            <button 
+              class="auth-tab-btn" 
+              [class.active]="authMode === 'login'"
+              (click)="authMode = 'login'">
+              BEJELENTKEZÉS
+            </button>
+            <button 
+              class="auth-tab-btn" 
+              [class.active]="authMode === 'register'"
+              (click)="authMode = 'register'">
+              REGISZTRÁCIÓ
+            </button>
+          </div>
+          
+          <div class="auth-form">
+            <div class="auth-error" *ngIf="authError">{{ authError }}</div>
+            
+            <input 
+              type="text" 
+              [(ngModel)]="authUsername" 
+              placeholder="Felhasználónév"
+              class="auth-input"
+              maxlength="15">
+            
+            <input 
+              type="password" 
+              [(ngModel)]="authPassword" 
+              placeholder="Jelszó"
+              class="auth-input"
+              (keyup.enter)="handleAuth()">
+            
+            <input 
+              *ngIf="authMode === 'register'"
+              type="email" 
+              [(ngModel)]="authEmail" 
+              placeholder="Email (opcionális)"
+              class="auth-input">
+            
+            <button (click)="handleAuth()" class="auth-submit-btn">
+              {{ authMode === 'login' ? 'BEJELENTKEZÉS' : 'REGISZTRÁCIÓ' }}
+            </button>
+            
+            <p class="auth-info">A ranglista mentéséhez bejelentkezés szükséges!</p>
+          </div>
+        </div>
+        
+        <div class="user-info" *ngIf="isLoggedIn">
+          <p>👤 Bejelentkezve: <strong>{{ currentUsername }}</strong></p>
+          <button (click)="handleLogout()" class="logout-btn">Kijelentkezés</button>
         </div>
         
         <!-- Character Customization -->
@@ -1144,6 +1199,151 @@ interface ColorOption {
       box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
     }
     
+    .auth-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(0, 100, 255, 0.05);
+      border: 2px solid rgba(0, 100, 255, 0.3);
+      border-radius: 10px;
+    }
+    
+    .auth-section h2 {
+      color: #00aaff;
+      text-shadow: 0 0 10px #00aaff;
+      margin-bottom: 15px;
+    }
+    
+    .auth-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .auth-tab-btn {
+      flex: 1;
+      padding: 10px 20px;
+      font-size: 0.9em;
+      font-weight: bold;
+      border: 2px solid #00aaff;
+      background: rgba(0, 0, 0, 0.5);
+      color: #888;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .auth-tab-btn:hover {
+      background: rgba(0, 100, 255, 0.1);
+      color: #00aaff;
+    }
+    
+    .auth-tab-btn.active {
+      background: linear-gradient(135deg, #00aaff, #0066ff);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(0, 170, 255, 0.6);
+      border-color: #00aaff;
+    }
+    
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .auth-input {
+      padding: 12px 15px;
+      font-size: 1em;
+      border: 2px solid rgba(0, 170, 255, 0.5);
+      background: rgba(0, 0, 0, 0.7);
+      color: #00ff00;
+      border-radius: 5px;
+      font-family: 'Courier New', monospace;
+      outline: none;
+      transition: all 0.3s;
+    }
+    
+    .auth-input:focus {
+      border-color: #00aaff;
+      box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
+    }
+    
+    .auth-submit-btn {
+      background: linear-gradient(135deg, #00aaff, #0066ff);
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      font-size: 1em;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 100, 255, 0.4);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      margin-top: 5px;
+    }
+    
+    .auth-submit-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 8px 20px rgba(0, 100, 255, 0.6);
+    }
+    
+    .auth-error {
+      background: rgba(255, 0, 0, 0.2);
+      border: 2px solid #ff0000;
+      color: #ff6666;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    
+    .auth-info {
+      font-size: 0.85em;
+      color: #00aaff;
+      text-align: center;
+      margin-top: 5px;
+    }
+    
+    .user-info {
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0, 255, 0, 0.1);
+      border: 2px solid #00ff00;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .user-info p {
+      color: #00ff00;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    
+    .user-info strong {
+      color: #00ffff;
+      text-shadow: 0 0 5px #00ffff;
+    }
+    
+    .logout-btn {
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      font-size: 0.9em;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(255, 102, 0, 0.4);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .logout-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(255, 102, 0, 0.6);
+    }
+    
     .name-input {
       margin: 20px 0;
       display: flex;
@@ -1185,6 +1385,19 @@ interface ColorOption {
     .submit-btn:hover {
       transform: scale(1.05);
       box-shadow: 0 8px 20px rgba(0, 255, 0, 0.6);
+    }
+    
+    .submit-score-section {
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .auth-warning {
+      color: #ffaa00;
+      font-size: 1.1em;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+      margin: 10px 0;
     }
     
     .leaderboard {
@@ -1940,8 +2153,26 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   private ctx!: CanvasRenderingContext2D;
   private animationId: number = 0;
   
+  // Auth service
+  private authService = inject(AuthService);
+  
   // Expose Math to template
   Math = Math;
+  
+  // Auth properties
+  authMode: 'login' | 'register' = 'login';
+  authUsername: string = '';
+  authPassword: string = '';
+  authEmail: string = '';
+  authError: string = '';
+  
+  get isLoggedIn(): boolean {
+    return this.authService.isLoggedIn;
+  }
+  
+  get currentUsername(): string {
+    return this.authService.currentUser?.username || '';
+  }
   
   canvasWidth = 1200;
   canvasHeight = 800;
@@ -3564,34 +3795,26 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   submitScore() {
-    if (!this.playerName.trim()) {
-      this.playerName = 'Anonymous';
+    // Check if user is logged in
+    if (!this.isLoggedIn) {
+      alert('⚠️ Bejelentkezés szükséges a pontszám mentéséhez!');
+      return;
     }
     
-    const playerName = this.playerName.trim();
-    
-    // Check if player already has a better score in localStorage
-    const saved = localStorage.getItem('bulletHellLeaderboard');
-    if (saved) {
-      const existingLeaderboard: LeaderboardEntry[] = JSON.parse(saved);
-      const existingEntry = existingLeaderboard.find(e => e.name.toLowerCase() === playerName.toLowerCase());
-      
-      if (existingEntry && existingEntry.score >= this.score) {
-        alert(`⚠️ You already have a better score (${existingEntry.score})! This score won't be saved.`);
-        this.playerNameSubmitted = true;
-        this.showLeaderboard = true;
-        return;
-      }
+    const token = this.authService.getToken();
+    if (!token) {
+      alert('⚠️ Bejelentkezési hiba. Kérlek jelentkezz be újra!');
+      return;
     }
     
     const entry = {
-      name: playerName,
+      token: token,
       score: this.score,
       wave: this.wave,
       kills: this.kills
     };
     
-    console.log('Submitting score to:', `${this.apiUrl}/leaderboard`, entry);
+    console.log('Submitting score to:', `${this.apiUrl}/leaderboard`);
     
     this.http.post<{ success: boolean, leaderboard: LeaderboardEntry[] }>(
       `${this.apiUrl}/leaderboard`,
@@ -3602,9 +3825,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         
         // Reload full leaderboard from server
         this.loadLeaderboard();
-        
-        // Update localStorage with the new leaderboard
-        this.saveLeaderboard();
         
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
@@ -3619,26 +3839,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         
         // Check if error is because player already has a better score
         if (err.error && err.error.existingScore !== undefined) {
-          alert(`⚠️ You already have a better score (${err.error.existingScore})! This score won't be saved.`);
+          alert(`⚠️ Már van jobb pontszámod (${err.error.existingScore})! Ez a pontszám nem lesz mentve.`);
           this.playerNameSubmitted = true;
           this.showLeaderboard = true;
           return;
         }
         
-        console.log('Using localStorage fallback');
+        if (err.status === 401) {
+          alert('⚠️ Bejelentkezési token lejárt. Kérlek jelentkezz be újra!');
+          this.authService.logout();
+          return;
+        }
         
-        const entryWithDate: LeaderboardEntry = {
-          ...entry,
-          date: new Date().toISOString()
-        };
-        
-        // Remove old entry from same player
-        this.leaderboard = this.leaderboard.filter(e => e.name.toLowerCase() !== playerName.toLowerCase());
-        
-        this.leaderboard.push(entryWithDate);
-        this.leaderboard.sort((a, b) => b.score - a.score);
-        this.leaderboard = this.leaderboard.slice(0, 10);
-        this.saveLeaderboard();
+        alert('❌ Hiba a pontszám mentésekor. Próbáld újra később!');
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
         this.showLeaderboard = true;
@@ -4010,6 +4223,54 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     alert('💚 Continue granted! You respawned with 50% HP!');
     this.gameLoop();
+  }
+  
+  // Auth methods
+  handleAuth() {
+    this.authError = '';
+    
+    if (!this.authUsername.trim() || !this.authPassword.trim()) {
+      this.authError = 'Felhasználónév és jelszó kötelező!';
+      return;
+    }
+    
+    if (this.authMode === 'register') {
+      this.authService.register(this.authUsername, this.authPassword, this.authEmail).subscribe({
+        next: (response) => {
+          console.log('Registration successful:', response);
+          this.authError = '';
+          this.authPassword = '';
+          this.authEmail = '';
+          alert('✅ Sikeres regisztráció! Most már játszhatsz!');
+        },
+        error: (err) => {
+          console.error('Registration failed:', err);
+          this.authError = err.error?.error || 'Regisztráció sikertelen!';
+        }
+      });
+    } else {
+      this.authService.login(this.authUsername, this.authPassword).subscribe({
+        next: (response) => {
+          console.log('Login successful:', response);
+          this.authError = '';
+          this.authPassword = '';
+          alert('✅ Sikeres bejelentkezés!');
+        },
+        error: (err) => {
+          console.error('Login failed:', err);
+          this.authError = err.error?.error || 'Bejelentkezés sikertelen!';
+        }
+      });
+    }
+  }
+  
+  handleLogout() {
+    this.authService.logout();
+    this.authUsername = '';
+    this.authPassword = '';
+    this.authEmail = '';
+    this.authError = '';
+    alert('👋 Kijelentkeztél!');
   }
   
   ngOnDestroy() {
