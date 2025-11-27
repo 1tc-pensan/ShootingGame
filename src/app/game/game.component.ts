@@ -2239,7 +2239,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       speed: 6,
       health: 100,
       maxHealth: 100,
-      invulnerable: 0
+      invulnerable: 0,
+      color: this.playerCustomization.color,
+      shape: this.playerCustomization.shape
     };
     this.bullets = [];
     this.enemies = [];
