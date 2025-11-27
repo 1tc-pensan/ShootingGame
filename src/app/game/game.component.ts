@@ -213,11 +213,12 @@ interface ColorOption {
         </div>
         
         <div class="weapon-selector">
-          <div class="weapon-label">Fegyver:</div>
+          <div class="weapon-label">Fegyver: <span *ngIf="enemies.length > 0" class="locked">🔒 Hullám után</span></div>
           <div class="weapon-buttons">
             <button *ngFor="let weapon of weapons" 
                     (click)="selectWeapon(weapon)"
                     [class.active]="currentWeapon.id === weapon.id"
+                    [disabled]="enemies.length > 0"
                     class="weapon-btn">
               {{ weapon.name }}
             </button>
@@ -943,6 +944,27 @@ interface ColorOption {
       font-size: 0.85em;
       text-align: center;
       font-style: italic;
+    }
+    
+    .weapon-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: rgba(30, 30, 30, 0.9);
+      border-color: #444;
+    }
+    
+    .weapon-btn:disabled:hover {
+      background: rgba(30, 30, 30, 0.9);
+      border-color: #444;
+      box-shadow: none;
+      transform: none;
+    }
+    
+    .weapon-label .locked {
+      color: #ff8800;
+      font-size: 0.9em;
+      margin-left: 10px;
+      animation: pulse 1s ease-in-out infinite;
     }
     
     .mini-map {
@@ -3087,6 +3109,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   selectWeapon(weapon: Weapon) {
+    // Only allow weapon selection between waves
+    if (this.enemies.length > 0) return;
     this.currentWeapon = weapon;
   }
   
