@@ -1990,6 +1990,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   killStreak: number = 0;
   lastKillTime: number = 0;
   slowMotion: number = 0;
+  waveDamageTaken: boolean = false;
   
   adWatched: boolean = false;
   adTimer: number = 5;
@@ -2291,6 +2292,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gameOver = false;
     this.waveSpawnTimer = 0;
     this.bossSpawned = false;
+    this.waveDamageTaken = false;
     this.playerName = '';
     this.playerNameSubmitted = false;
     this.showLeaderboard = false;
@@ -2661,7 +2663,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.spawnEnemy(type);
     }
     
+    // Check Flawless Victory achievement before advancing wave
+    if (this.wave >= 1 && !this.waveDamageTaken) {
+      this.unlockAchievement('flawless_victory');
+    }
+    
     this.wave++;
+    this.waveDamageTaken = false; // Reset for next wave
   }
   
   spawnEnemy(type: Exclude<Enemy['type'], 'boss'>) {
@@ -2814,6 +2822,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           if (this.player.invulnerable === 0) {
             this.player.health -= bullet.damage;
             this.player.invulnerable = 60;
+            this.waveDamageTaken = true;
             this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
           }
           this.bullets.splice(i, 1);
@@ -2828,6 +2837,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                enemy.x, enemy.y, enemy.width, enemy.height)) {
           this.player.health -= 25;
           this.player.invulnerable = 60;
+          this.waveDamageTaken = true;
           this.screenShake = 20;
           this.createParticles(this.player.x + this.player.width / 2, 
                              this.player.y + this.player.height / 2, '#ff0000', 20);
@@ -3780,6 +3790,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         icon: '🔥',
         unlocked: false,
         condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'flawless_victory',
+        title: 'Flawless Victory',
+        description: 'Complete a wave without taking damage',
+        icon: '✨',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
       }
     ];
   }
@@ -3844,6 +3862,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       this.currentUnlockNotification = null;
     }, 5000);
+  }
+  
+  unlockAchievement(id: string) {
+    const achievement = this.achievements.find(a => a.id === id);
+    if (achievement && !achievement.unlocked) {
+      achievement.unlocked = true;
+      this.saveAchievements();
+      this.showAchievementNotification(achievement);
+    }
   }
   
   loadAdSense() {
