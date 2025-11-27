@@ -42,9 +42,10 @@ interface Enemy {
   health: number;
   maxHealth: number;
   speed: number;
-  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss';
+  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper';
   shootTimer: number;
   movePattern: number;
+  bossType?: 'normal' | 'tank' | 'speed' | 'sniper';
 }
 
 interface Particle {
@@ -3037,14 +3038,56 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         break;
         
       case 'boss':
-        // Circular pattern
-        enemy.movePattern += 0.03;
-        enemy.x += Math.cos(enemy.movePattern) * 2;
-        enemy.y = Math.min(200, enemy.y + 0.5);
+      case 'boss_tank':
+      case 'boss_speed':
+      case 'boss_sniper':
+        // Different movement patterns for different boss types
+        if (enemy.type === 'boss_tank') {
+          // Tank boss: Slow vertical movement, stays at top
+          enemy.movePattern += 0.02;
+          enemy.x += Math.cos(enemy.movePattern) * 1;
+          enemy.y = Math.min(150, enemy.y + 0.3);
+        } else if (enemy.type === 'boss_speed') {
+          // Speed boss: Fast zigzag pattern
+          enemy.movePattern += 0.08;
+          enemy.x += Math.cos(enemy.movePattern) * 4;
+          enemy.y = Math.min(180, enemy.y + 1);
+          
+          // Keep within bounds
+          if (enemy.x < 0) enemy.x = 0;
+          if (enemy.x > this.canvasWidth - enemy.width) enemy.x = this.canvasWidth - enemy.width;
+        } else if (enemy.type === 'boss_sniper') {
+          // Sniper boss: Teleports occasionally
+          enemy.movePattern += 0.05;
+          enemy.x += Math.cos(enemy.movePattern) * 1.5;
+          enemy.y = Math.min(180, enemy.y + 0.4);
+          
+          // Random teleport
+          if (enemy.shootTimer % 200 === 0 && enemy.shootTimer > 0) {
+            enemy.x = Math.random() * (this.canvasWidth - enemy.width);
+            this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff00ff', 30);
+          }
+        } else {
+          // Normal boss: Circular pattern
+          enemy.movePattern += 0.03;
+          enemy.x += Math.cos(enemy.movePattern) * 2;
+          enemy.y = Math.min(200, enemy.y + 0.5);
+        }
         
         // Rage mode when below 50% HP
         const rageMode = enemy.health < enemy.maxHealth * 0.5;
-        const shootInterval = rageMode ? 20 : 30;
+        
+        // Different shoot intervals for different boss types
+        let shootInterval = 30;
+        if (enemy.type === 'boss_tank') {
+          shootInterval = rageMode ? 40 : 60;
+        } else if (enemy.type === 'boss_speed') {
+          shootInterval = rageMode ? 10 : 15;
+        } else if (enemy.type === 'boss_sniper') {
+          shootInterval = rageMode ? 35 : 50;
+        } else {
+          shootInterval = rageMode ? 20 : 30;
+        }
         
         enemy.shootTimer++;
         if (enemy.shootTimer > shootInterval) {
@@ -3072,19 +3115,72 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   bossShootPattern(enemy: Enemy, rageMode: boolean = false) {
-    // Shoot in 8 directions
-    const directions = rageMode ? 16 : 8;
-    for (let i = 0; i < directions; i++) {
-      const angle = (Math.PI * 2 * i) / directions;
-      this.bullets.push({
-        x: enemy.x + enemy.width / 2,
-        y: enemy.y + enemy.height / 2,
-        vx: Math.cos(angle) * 3,
-        vy: Math.sin(angle) * 3,
-        radius: 6,
-        damage: 20,
-        fromPlayer: false
-      });
+    if (enemy.type === 'boss_tank') {
+      // Tank: Massive spray of slow bullets
+      const directions = rageMode ? 24 : 16;
+      for (let i = 0; i < directions; i++) {
+        const angle = (Math.PI * 2 * i) / directions;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 2,
+          vy: Math.sin(angle) * 2,
+          radius: 8,
+          damage: 25,
+          fromPlayer: false
+        });
+      }
+    } else if (enemy.type === 'boss_speed') {
+      // Speed: Fast bullets aimed at player
+      const playerDx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+      const playerDy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+      const dist = Math.sqrt(playerDx * playerDx + playerDy * playerDy);
+      
+      const bulletCount = rageMode ? 5 : 3;
+      for (let i = 0; i < bulletCount; i++) {
+        const spread = (i - (bulletCount - 1) / 2) * 0.3;
+        const angle = Math.atan2(playerDy, playerDx) + spread;
+        
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 6,
+          vy: Math.sin(angle) * 6,
+          radius: 5,
+          damage: 15,
+          fromPlayer: false
+        });
+      }
+    } else if (enemy.type === 'boss_sniper') {
+      // Sniper: Laser-like fast bullets in cardinal directions
+      const directions = rageMode ? 8 : 4;
+      for (let i = 0; i < directions; i++) {
+        const angle = (Math.PI * 2 * i) / directions;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 8,
+          vy: Math.sin(angle) * 8,
+          radius: 4,
+          damage: 30,
+          fromPlayer: false
+        });
+      }
+    } else {
+      // Normal: Shoot in 8 directions
+      const directions = rageMode ? 16 : 8;
+      for (let i = 0; i < directions; i++) {
+        const angle = (Math.PI * 2 * i) / directions;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 3,
+          vy: Math.sin(angle) * 3,
+          radius: 6,
+          damage: 20,
+          fromPlayer: false
+        });
+      }
     }
   }
   
@@ -3175,7 +3271,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.waveDamageTaken = false; // Reset for next wave
   }
   
-  spawnEnemy(type: Exclude<Enemy['type'], 'boss'>) {
+  spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
     const configs = {
       basic: { width: 30, height: 30, health: 50, speed: 1.5 },
       fast: { width: 25, height: 25, health: 30, speed: 3 },
@@ -3222,18 +3318,75 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const healthScale = 1 + bossIteration * 0.8; // +80% HP per boss iteration
     const baseHealth = 1000;
     
-    this.enemies.push({
-      x: this.canvasWidth / 2 - 75,
-      y: -150,
-      width: 150,
-      height: 150,
-      health: Math.floor(baseHealth * healthScale + this.wave * 100),
-      maxHealth: Math.floor(baseHealth * healthScale + this.wave * 100),
-      speed: 1,
-      type: 'boss',
-      shootTimer: 0,
-      movePattern: 0
-    });
+    // Random boss type
+    const bossTypes = ['normal', 'tank', 'speed', 'sniper'] as const;
+    const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+    
+    let boss: Enemy;
+    
+    if (bossType === 'tank') {
+      // Tank Boss: Huge HP, slow, small bullets
+      boss = {
+        x: this.canvasWidth / 2 - 100,
+        y: -200,
+        width: 200,
+        height: 200,
+        health: Math.floor(baseHealth * healthScale * 2 + this.wave * 150),
+        maxHealth: Math.floor(baseHealth * healthScale * 2 + this.wave * 150),
+        speed: 0.5,
+        type: 'boss_tank',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'tank'
+      };
+    } else if (bossType === 'speed') {
+      // Speed Boss: Lower HP, fast, rapid fire
+      boss = {
+        x: this.canvasWidth / 2 - 60,
+        y: -120,
+        width: 120,
+        height: 120,
+        health: Math.floor(baseHealth * healthScale * 0.7 + this.wave * 80),
+        maxHealth: Math.floor(baseHealth * healthScale * 0.7 + this.wave * 80),
+        speed: 2.5,
+        type: 'boss_speed',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'speed'
+      };
+    } else if (bossType === 'sniper') {
+      // Sniper Boss: Medium HP, teleports, laser attacks
+      boss = {
+        x: this.canvasWidth / 2 - 75,
+        y: -150,
+        width: 150,
+        height: 150,
+        health: Math.floor(baseHealth * healthScale * 1.2 + this.wave * 100),
+        maxHealth: Math.floor(baseHealth * healthScale * 1.2 + this.wave * 100),
+        speed: 0.8,
+        type: 'boss_sniper',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'sniper'
+      };
+    } else {
+      // Normal Boss: Balanced
+      boss = {
+        x: this.canvasWidth / 2 - 75,
+        y: -150,
+        width: 150,
+        height: 150,
+        health: Math.floor(baseHealth * healthScale + this.wave * 100),
+        maxHealth: Math.floor(baseHealth * healthScale + this.wave * 100),
+        speed: 1,
+        type: 'boss',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'normal'
+      };
+    }
+    
+    this.enemies.push(boss);
   }
   
   checkCollisions() {
@@ -3815,15 +3968,18 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Enemies
     this.enemies.forEach(enemy => {
-      const colors = {
+      const colors: Record<string, string> = {
         basic: '#888888',
         fast: '#ff00ff',
         tank: '#ffaa00',
         shooter: '#ff0000',
-        boss: '#ff0000'
+        boss: '#ff0000',
+        boss_tank: '#ff8800',
+        boss_speed: '#00ffff',
+        boss_sniper: '#ff00ff'
       };
       
-      this.ctx.fillStyle = colors[enemy.type];
+      this.ctx.fillStyle = colors[enemy.type] || '#ff0000';
       this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
       
       // Health bar
@@ -3835,11 +3991,29 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // Glow effect
       this.ctx.shadowBlur = 15;
-      this.ctx.shadowColor = colors[enemy.type];
-      this.ctx.strokeStyle = colors[enemy.type];
+      this.ctx.shadowColor = colors[enemy.type] || '#ff0000';
+      this.ctx.strokeStyle = colors[enemy.type] || '#ff0000';
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
       this.ctx.shadowBlur = 0;
+      
+      // Boss name display
+      if (enemy.type.startsWith('boss')) {
+        const bossNames: Record<string, string> = {
+          boss: '👑 BOSS',
+          boss_tank: '🛡️ TANK BOSS',
+          boss_speed: '⚡ SPEED BOSS',
+          boss_sniper: '🎯 SNIPER BOSS'
+        };
+        
+        this.ctx.font = 'bold 16px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = colors[enemy.type] || '#ff0000';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = colors[enemy.type] || '#ff0000';
+        this.ctx.fillText(bossNames[enemy.type] || '👑 BOSS', enemy.x + enemy.width / 2, enemy.y - 20);
+        this.ctx.shadowBlur = 0;
+      }
     });
     
     // Power-ups
