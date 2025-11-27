@@ -42,10 +42,11 @@ interface Enemy {
   health: number;
   maxHealth: number;
   speed: number;
-  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper';
+  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper' | 'healer' | 'exploder' | 'dodger' | 'miniboss';
   shootTimer: number;
   movePattern: number;
   bossType?: 'normal' | 'tank' | 'speed' | 'sniper';
+  dodgeTimer?: number;
 }
 
 interface Particle {
@@ -3095,6 +3096,75 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           enemy.shootTimer = 0;
         }
         break;
+        
+      case 'healer':
+        // Healer: Stays back, heals nearby enemies
+        enemy.x += (dx / dist) * enemy.speed * 0.5;
+        enemy.y += (dy / dist) * enemy.speed * 0.5;
+        enemy.shootTimer++;
+        if (enemy.shootTimer > 180) {
+          // Heal nearby enemies
+          this.enemies.forEach(other => {
+            if (other !== enemy && other.type !== 'healer') {
+              const healDx = other.x - enemy.x;
+              const healDy = other.y - enemy.y;
+              const healDist = Math.sqrt(healDx * healDx + healDy * healDy);
+              if (healDist < 150) {
+                other.health = Math.min(other.maxHealth, other.health + 20);
+                this.createParticles(other.x + other.width / 2, other.y + other.height / 2, '#00ff00', 10);
+              }
+            }
+          });
+          enemy.shootTimer = 0;
+        }
+        break;
+        
+      case 'exploder':
+        // Exploder: Rushes towards player, explodes on death
+        enemy.x += (dx / dist) * enemy.speed * 1.5;
+        enemy.y += (dy / dist) * enemy.speed * 1.5;
+        break;
+        
+      case 'dodger':
+        // Dodger: Fast movement with random dodges
+        if (!enemy.dodgeTimer) enemy.dodgeTimer = 0;
+        enemy.dodgeTimer++;
+        
+        if (enemy.dodgeTimer % 60 === 0) {
+          // Random dodge direction
+          const dodgeAngle = Math.random() * Math.PI * 2;
+          enemy.x += Math.cos(dodgeAngle) * 50;
+          enemy.y += Math.sin(dodgeAngle) * 50;
+        } else {
+          enemy.x += (dx / dist) * enemy.speed;
+          enemy.y += (dy / dist) * enemy.speed;
+        }
+        break;
+        
+      case 'miniboss':
+        // Miniboss: Moves and shoots like boss but smaller
+        enemy.movePattern += 0.04;
+        enemy.x += Math.cos(enemy.movePattern) * 1.5;
+        enemy.y = Math.min(250, enemy.y + 0.7);
+        
+        enemy.shootTimer++;
+        if (enemy.shootTimer > 40) {
+          // Shoot in 4 directions
+          for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI * 2 * i) / 4 + enemy.movePattern;
+            this.bullets.push({
+              x: enemy.x + enemy.width / 2,
+              y: enemy.y + enemy.height / 2,
+              vx: Math.cos(angle) * 3.5,
+              vy: Math.sin(angle) * 3.5,
+              radius: 6,
+              damage: 18,
+              fromPlayer: false
+            });
+          }
+          enemy.shootTimer = 0;
+        }
+        break;
     }
   }
   
@@ -3252,12 +3322,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     for (let i = 0; i < enemyCount; i++) {
       const rand = Math.random();
-      let type: Enemy['type'] = 'basic';
+      let type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'> = 'basic';
       
-      if (rand < 0.3) type = 'basic';
-      else if (rand < 0.5) type = 'fast';
-      else if (rand < 0.7) type = 'tank';
-      else type = 'shooter';
+      if (rand < 0.25) type = 'basic';
+      else if (rand < 0.4) type = 'fast';
+      else if (rand < 0.55) type = 'tank';
+      else if (rand < 0.7) type = 'shooter';
+      else if (rand < 0.8) type = 'healer';
+      else if (rand < 0.9) type = 'exploder';
+      else if (rand < 0.95) type = 'dodger';
+      else type = 'miniboss';
       
       this.spawnEnemy(type);
     }
@@ -3276,7 +3350,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       basic: { width: 30, height: 30, health: 50, speed: 1.5 },
       fast: { width: 25, height: 25, health: 30, speed: 3 },
       tank: { width: 50, height: 50, health: 150, speed: 0.8 },
-      shooter: { width: 35, height: 35, health: 60, speed: 1 }
+      shooter: { width: 35, height: 35, health: 60, speed: 1 },
+      healer: { width: 28, height: 28, health: 40, speed: 1.2 },
+      exploder: { width: 32, height: 32, health: 35, speed: 2 },
+      dodger: { width: 22, height: 22, health: 25, speed: 3.5 },
+      miniboss: { width: 70, height: 70, health: 250, speed: 0.9 }
     };
     
     const config = configs[type];
@@ -3420,6 +3498,44 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             
             if (enemy.health <= 0) {
+              // Exploder special effect before removal
+              if (enemy.type === 'exploder') {
+                // Explosion damage to nearby enemies and player
+                const explosionRadius = 100;
+                
+                // Damage player if nearby
+                const playerDx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+                const playerDy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+                const playerDist = Math.sqrt(playerDx * playerDx + playerDy * playerDy);
+                
+                if (playerDist < explosionRadius && this.player.invulnerable === 0 && !this.hasShield) {
+                  this.player.health -= 30;
+                  this.player.invulnerable = 60;
+                  this.waveDamageTaken = true;
+                  this.screenShake = 25;
+                }
+                
+                // Damage other enemies
+                this.enemies.forEach(other => {
+                  if (other !== enemy) {
+                    const otherDx = other.x + other.width / 2 - (enemy.x + enemy.width / 2);
+                    const otherDy = other.y + other.height / 2 - (enemy.y + enemy.height / 2);
+                    const otherDist = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                    
+                    if (otherDist < explosionRadius) {
+                      other.health -= 50;
+                    }
+                  }
+                });
+                
+                // Visual effects
+                this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff8800', 60);
+                this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffff00', 40);
+                this.screenFlash = 0.5;
+                this.screenFlashColor = '#ff8800';
+                this.screenShake = 20;
+              }
+              
               this.enemies.splice(j, 1);
               this.kills++;
               
@@ -3467,9 +3583,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.unlockAchievement('combo_master');
               }
               
-              const baseScore = enemy.type === 'boss' ? 1000 : 
+              const baseScore = enemy.type.startsWith('boss') ? 1000 : 
+                           enemy.type === 'miniboss' ? 300 :
                            enemy.type === 'tank' ? 100 : 
                            enemy.type === 'shooter' ? 75 : 
+                           enemy.type === 'healer' ? 90 :
+                           enemy.type === 'exploder' ? 60 :
+                           enemy.type === 'dodger' ? 80 :
                            enemy.type === 'fast' ? 50 : 25;
               
               this.score += Math.floor(baseScore * this.combo.multiplier);
@@ -3976,7 +4096,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         boss: '#ff0000',
         boss_tank: '#ff8800',
         boss_speed: '#00ffff',
-        boss_sniper: '#ff00ff'
+        boss_sniper: '#ff00ff',
+        healer: '#00ff88',
+        exploder: '#ff6600',
+        dodger: '#8888ff',
+        miniboss: '#ff4444'
       };
       
       this.ctx.fillStyle = colors[enemy.type] || '#ff0000';
@@ -3998,12 +4122,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.ctx.shadowBlur = 0;
       
       // Boss name display
-      if (enemy.type.startsWith('boss')) {
+      if (enemy.type.startsWith('boss') || enemy.type === 'miniboss') {
         const bossNames: Record<string, string> = {
           boss: '👑 BOSS',
           boss_tank: '🛡️ TANK BOSS',
           boss_speed: '⚡ SPEED BOSS',
-          boss_sniper: '🎯 SNIPER BOSS'
+          boss_sniper: '🎯 SNIPER BOSS',
+          miniboss: '⚔️ MINI BOSS'
         };
         
         this.ctx.font = 'bold 16px Courier New';
