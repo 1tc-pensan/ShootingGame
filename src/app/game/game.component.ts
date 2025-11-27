@@ -393,9 +393,13 @@ interface WeaponUpgrade {
       align-items: center;
       background: #0a0a0a;
       min-height: 100vh;
+      min-height: -webkit-fill-available;
       font-family: 'Courier New', monospace;
       position: relative;
       overflow: hidden;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
     }
     
     .ad-banner-top {
@@ -1627,22 +1631,43 @@ interface WeaponUpgrade {
         font-size: 1.5em;
       }
       
+      .game-container {
+        overflow-y: auto;
+      }
+      
+      canvas {
+        max-width: 100vw;
+        height: auto !important;
+        touch-action: none;
+      }
+      
       .leaderboard-toggle,
       .achievements-toggle,
-      .support-btn {
+      .support-btn,
+      .pause-btn {
         top: auto;
         right: 5px;
-        padding: 6px 12px;
-        font-size: 0.8em;
+        padding: 8px 14px;
+        font-size: 0.85em;
+        z-index: 1000;
       }
       
       .achievements-toggle {
         top: auto;
-        bottom: 60px;
+        bottom: 100px;
       }
       
       .support-btn {
+        bottom: 60px;
+      }
+      
+      .pause-btn {
         bottom: 20px;
+      }
+      
+      .copyright {
+        font-size: 0.7em;
+        padding: 10px;
       }
       
       .mini-map {
@@ -1817,15 +1842,21 @@ export class GameComponent implements OnInit, OnDestroy {
   updateCanvasSize() {
     const maxWidth = 1200;
     const maxHeight = 800;
-    const minWidth = 600;
+    const minWidth = 320;
     const minHeight = 400;
     
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
     // Calculate responsive size with padding
-    let width = Math.min(maxWidth, windowWidth - 100);
-    let height = Math.min(maxHeight, windowHeight - 300);
+    let width = Math.min(maxWidth, windowWidth - 40); // Reduced padding for mobile
+    let height = Math.min(maxHeight, windowHeight - 200); // More space for controls
+    
+    // On mobile, use more screen space
+    if (windowWidth <= 768) {
+      width = Math.min(windowWidth - 20, maxWidth);
+      height = Math.min(windowHeight - 150, maxHeight);
+    }
     
     // Maintain aspect ratio (3:2)
     const aspectRatio = 3 / 2;
