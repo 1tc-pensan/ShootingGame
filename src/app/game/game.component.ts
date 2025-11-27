@@ -193,6 +193,10 @@ interface ColorOption {
         <div class="kill-streak" *ngIf="killStreak >= 5">
           🔥 {{ killStreak }} KILL STREAK!
         </div>
+        <div class="slow-motion-info" *ngIf="killStreak >= 10">
+          <span *ngIf="slowMotionCooldown > 0">⏱️ E - CD: {{ (slowMotionCooldown / 60).toFixed(1) }}s</span>
+          <span *ngIf="slowMotionCooldown === 0" class="ready">⏱️ E - READY!</span>
+        </div>
       </div>
       
       <div class="mini-map">
@@ -833,6 +837,25 @@ interface ColorOption {
       font-size: 1.1em;
       text-shadow: 0 0 10px #ff0000;
       box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+      animation: pulse 0.5s ease-in-out infinite;
+    }
+    
+    .slow-motion-info {
+      background: rgba(0, 255, 255, 0.8);
+      border: 2px solid #00ffff;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1em;
+      text-shadow: 0 0 10px #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+      margin-top: 10px;
+    }
+    
+    .slow-motion-info .ready {
+      color: #00ff00;
+      text-shadow: 0 0 15px #00ff00;
       animation: pulse 0.5s ease-in-out infinite;
     }
     
@@ -2250,6 +2273,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   killStreak: number = 0;
   lastKillTime: number = 0;
   slowMotion: number = 0;
+  slowMotionCooldown: number = 0;
   waveDamageTaken: boolean = false;
   recentKills: number[] = []; // Track timestamps of recent kills for Speed Demon achievement
   
@@ -3311,9 +3335,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   activateSlowMotion() {
-    if (this.slowMotion > 0 || this.killStreak < 10) return;
-    
+    if (this.slowMotion > 0 || this.slowMotionCooldown > 0 || this.killStreak < 10) return;
+
     this.slowMotion = 180; // 3 seconds
+    this.slowMotionCooldown = 600; // 10 seconds cooldown
     this.killStreak = 0;
   }
   
