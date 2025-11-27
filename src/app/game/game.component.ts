@@ -203,6 +203,7 @@ interface ColorOption {
       </div>
       
       <div class="weapon-info">
+        <div class="weapon-current">{{ currentWeapon.name }}</div>
         <div class="weapon-level">🔫 WEAPON LV.{{ weaponLevel }}</div>
         <div class="kill-streak" *ngIf="killStreak >= 5">
           🔥 {{ killStreak }} KILL STREAK!
@@ -210,20 +211,6 @@ interface ColorOption {
         <div class="slow-motion-info" *ngIf="killStreak >= 10">
           <span *ngIf="slowMotionCooldown > 0">⏱️ E - CD: {{ (slowMotionCooldown / 60).toFixed(1) }}s</span>
           <span *ngIf="slowMotionCooldown === 0" class="ready">⏱️ E - READY!</span>
-        </div>
-        
-        <div class="weapon-selector">
-          <div class="weapon-label">Fegyver: <span *ngIf="enemies.length > 0" class="locked">🔒 Hullám után</span></div>
-          <div class="weapon-buttons">
-            <button *ngFor="let weapon of weapons" 
-                    (click)="selectWeapon(weapon)"
-                    [class.active]="currentWeapon.id === weapon.id"
-                    [disabled]="enemies.length > 0"
-                    class="weapon-btn">
-              {{ weapon.name }}
-            </button>
-          </div>
-          <div class="weapon-description">{{ currentWeapon.description }}</div>
         </div>
       </div>
       
@@ -554,6 +541,25 @@ interface ColorOption {
           <p><span class="enemy-shooter">█</span> Shooter - Shoots at you!</p>
           <p><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
         </div>
+        
+        <div class="weapon-selection-menu">
+          <h2>🔫 Válassz fegyvert!</h2>
+          <div class="weapon-grid">
+            <button *ngFor="let weapon of weapons" 
+                    (click)="selectWeapon(weapon)"
+                    [class.selected]="currentWeapon.id === weapon.id"
+                    class="weapon-card">
+              <div class="weapon-name">{{ weapon.name }}</div>
+              <div class="weapon-desc">{{ weapon.description }}</div>
+              <div class="weapon-stats">
+                <span>⚡ {{ 1000 / weapon.fireRate | number:'1.1-1' }}/s</span>
+                <span>💥 {{ weapon.damage }}</span>
+                <span>🎯 {{ weapon.bulletCount }}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+        
         <button (click)="startGame()" class="start-btn">START GAME</button>
         <div class="copyright">
           <p>© 2025 Bullet Hell Survivor. All rights reserved.</p>
@@ -887,84 +893,18 @@ interface ColorOption {
       animation: pulse 0.5s ease-in-out infinite;
     }
     
-    .weapon-selector {
-      background: rgba(0, 0, 0, 0.9);
+    .weapon-current {
+      background: rgba(0, 255, 255, 0.2);
       border: 2px solid #00ffff;
+      color: #00ffff;
+      padding: 10px 20px;
       border-radius: 10px;
-      padding: 15px;
-      margin-top: 10px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-    }
-    
-    .weapon-label {
-      color: #00ffff;
       font-weight: bold;
-      font-size: 1em;
-      margin-bottom: 10px;
+      font-size: 1.1em;
       text-shadow: 0 0 10px #00ffff;
-    }
-    
-    .weapon-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    
-    .weapon-btn {
-      background: rgba(50, 50, 50, 0.9);
-      border: 2px solid #666;
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.9em;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-weight: bold;
-      white-space: nowrap;
-    }
-    
-    .weapon-btn:hover {
-      background: rgba(80, 80, 80, 0.9);
-      border-color: #00ffff;
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
-      transform: translateY(-2px);
-    }
-    
-    .weapon-btn.active {
-      background: rgba(0, 255, 255, 0.3);
-      border-color: #00ffff;
-      color: #00ffff;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
-      text-shadow: 0 0 10px #00ffff;
-    }
-    
-    .weapon-description {
-      color: #aaa;
-      font-size: 0.85em;
+      margin-bottom: 10px;
       text-align: center;
-      font-style: italic;
-    }
-    
-    .weapon-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      background: rgba(30, 30, 30, 0.9);
-      border-color: #444;
-    }
-    
-    .weapon-btn:disabled:hover {
-      background: rgba(30, 30, 30, 0.9);
-      border-color: #444;
-      box-shadow: none;
-      transform: none;
-    }
-    
-    .weapon-label .locked {
-      color: #ff8800;
-      font-size: 0.9em;
-      margin-left: 10px;
-      animation: pulse 1s ease-in-out infinite;
     }
     
     .mini-map {
@@ -1164,6 +1104,78 @@ interface ColorOption {
     .enemy-tank { color: #ffaa00; }
     .enemy-shooter { color: #ff0000; }
     .enemy-boss { color: #ff0000; font-size: 1.5em; }
+    
+    .weapon-selection-menu {
+      margin: 30px 0;
+      width: 100%;
+      max-width: 900px;
+    }
+    
+    .weapon-selection-menu h2 {
+      color: #00ffff;
+      text-align: center;
+      font-size: 2em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #00ffff;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .weapon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      padding: 20px;
+    }
+    
+    .weapon-card {
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #666;
+      border-radius: 10px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+    
+    .weapon-card:hover {
+      border-color: #00ffff;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+      transform: translateY(-5px);
+    }
+    
+    .weapon-card.selected {
+      border-color: #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+    }
+    
+    .weapon-name {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    
+    .weapon-desc {
+      color: #aaa;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+      min-height: 40px;
+    }
+    
+    .weapon-stats {
+      display: flex;
+      justify-content: space-around;
+      color: #00ffff;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+    
+    .weapon-stats span {
+      padding: 5px 10px;
+      background: rgba(0, 255, 255, 0.1);
+      border-radius: 5px;
+    }
     
     .start-btn {
       background: linear-gradient(135deg, #00ff00, #00cc00);
@@ -3109,8 +3121,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   selectWeapon(weapon: Weapon) {
-    // Only allow weapon selection between waves
-    if (this.enemies.length > 0) return;
     this.currentWeapon = weapon;
   }
   
