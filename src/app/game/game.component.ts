@@ -233,6 +233,20 @@ interface WeaponUpgrade {
           <h2>🏆 LEADERBOARD 🏆</h2>
           <button (click)="toggleLeaderboard()" class="close-btn">✕</button>
         </div>
+        <div class="leaderboard-tabs">
+          <button 
+            class="tab-btn" 
+            [class.active]="leaderboardType === '24h'"
+            (click)="switchLeaderboardType('24h')">
+            📅 24 HOURS
+          </button>
+          <button 
+            class="tab-btn" 
+            [class.active]="leaderboardType === 'alltime'"
+            (click)="switchLeaderboardType('alltime')">
+            ⏳ ALL TIME
+          </button>
+        </div>
         <div class="leaderboard-list">
           <div class="leaderboard-entry header-entry">
             <span class="rank">#</span>
@@ -242,7 +256,7 @@ interface WeaponUpgrade {
             <span class="kills-col">KILLS</span>
           </div>
           <div 
-            *ngFor="let entry of leaderboard; let i = index" 
+            *ngFor="let entry of (leaderboardType === '24h' ? leaderboard24h : leaderboardAllTime); let i = index" 
             class="leaderboard-entry"
             [class.highlight]="entry.name === playerName && justSubmitted">
             <span class="rank">{{ i + 1 }}</span>
@@ -255,18 +269,42 @@ interface WeaponUpgrade {
       </div>
       
       <button 
-        *ngIf="!showLeaderboard && !gameOver" 
+        *ngIf="!showLeaderboard && gameStarted" 
         (click)="toggleLeaderboard()" 
         class="leaderboard-toggle">
         🏆 LEADERBOARD
       </button>
       
       <button 
-        *ngIf="!showAchievements && !gameOver" 
+        *ngIf="!showAchievements && gameStarted" 
         (click)="toggleAchievements()" 
         class="achievements-toggle">
         🎖️ ACHIEVEMENTS
       </button>
+      
+      <a 
+        href="https://ko-fi.com/szeretemakiflit" 
+        target="_blank"
+        *ngIf="gameStarted"
+        class="support-btn">
+        ☕ SUPPORT ME
+      </a>
+      
+      <button 
+        *ngIf="gameStarted && !gameOver" 
+        (click)="togglePause()" 
+        class="pause-btn">
+        {{ isPaused ? '▶️' : '⏸️' }}
+      </button>
+      
+      <div class="pause-overlay" *ngIf="isPaused && !gameOver">
+        <div class="pause-menu">
+          <h1>⏸️ PAUSED</h1>
+          <p>Press ESC or click Resume to continue</p>
+          <button (click)="togglePause()" class="resume-btn">▶️ RESUME</button>
+          <button (click)="restart()" class="restart-btn-pause">🔄 RESTART</button>
+        </div>
+      </div>
       
       <div class="achievement-notification" *ngIf="currentUnlockNotification">
         <div class="achievement-badge">
@@ -341,6 +379,10 @@ interface WeaponUpgrade {
           <p><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
         </div>
         <button (click)="startGame()" class="start-btn">START GAME</button>
+        <div class="copyright">
+          <p>© 2025 Bullet Hell Survivor. All rights reserved.</p>
+          <p>Made with ❤️ by <a href="https://ko-fi.com/szeretemakiflit" target="_blank">szeretemakiflit</a></p>
+        </div>
       </div>
     </div>
   `,
@@ -357,7 +399,8 @@ interface WeaponUpgrade {
     }
     
     .ad-banner-top {
-      width: 1200px;
+      width: 100%;
+      max-width: 1200px;
       min-height: 90px;
       background: rgba(0, 0, 0, 0.9);
       border-bottom: 2px solid #333;
@@ -427,8 +470,9 @@ interface WeaponUpgrade {
     }
     
     .hud {
-      width: 900px;
-      padding: 20px;
+      width: 100%;
+      max-width: 1200px;
+      padding: 15px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -436,7 +480,7 @@ interface WeaponUpgrade {
       border-bottom: 3px solid #00ff00;
       box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 10px;
     }
     
     .ultimate-bar {
@@ -853,6 +897,33 @@ interface WeaponUpgrade {
       box-shadow: 0 8px 30px rgba(0, 255, 0, 0.8);
     }
     
+    .copyright {
+      margin-top: 30px;
+      padding: 20px;
+      text-align: center;
+      color: #00ff00;
+      font-size: 0.85em;
+      opacity: 0.8;
+      border-top: 1px solid rgba(0, 255, 0, 0.3);
+    }
+    
+    .copyright p {
+      margin: 5px 0;
+      text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+    }
+    
+    .copyright a {
+      color: #00ff00;
+      text-decoration: none;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    
+    .copyright a:hover {
+      color: #00ffff;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    }
+    
     .name-input {
       margin: 20px 0;
       display: flex;
@@ -917,7 +988,7 @@ interface WeaponUpgrade {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
       border-bottom: 2px solid #ffd700;
       padding-bottom: 15px;
     }
@@ -927,6 +998,38 @@ interface WeaponUpgrade {
       margin: 0;
       font-size: 2em;
       text-shadow: 0 0 15px #ffd700;
+    }
+    
+    .leaderboard-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .tab-btn {
+      flex: 1;
+      padding: 12px 20px;
+      font-size: 1em;
+      font-weight: bold;
+      border: 2px solid #ffd700;
+      background: rgba(0, 0, 0, 0.5);
+      color: #888;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .tab-btn:hover {
+      background: rgba(255, 215, 0, 0.1);
+      color: #ffd700;
+    }
+    
+    .tab-btn.active {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+      border-color: #ffd700;
     }
     
     .close-btn {
@@ -1052,6 +1155,131 @@ interface WeaponUpgrade {
     .achievements-toggle:hover {
       transform: scale(1.05);
       box-shadow: 0 8px 25px rgba(255, 0, 255, 0.8);
+    }
+    
+    .support-btn {
+      position: absolute;
+      top: 140px;
+      right: 20px;
+      background: linear-gradient(135deg, #00c9ff, #92fe9d);
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 201, 255, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      text-decoration: none;
+      display: inline-block;
+      z-index: 100;
+    }
+    
+    .support-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(0, 201, 255, 0.8);
+    }
+    
+    .pause-btn {
+      position: absolute;
+      top: 200px;
+      right: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+      transition: all 0.3s;
+      z-index: 100;
+    }
+    
+    .pause-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.8);
+    }
+    
+    .pause-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      pointer-events: none;
+    }
+    
+    .pause-menu {
+      background: rgba(10, 10, 30, 0.95);
+      padding: 50px;
+      border: 4px solid #667eea;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(102, 126, 234, 0.8);
+      pointer-events: auto;
+      color: white;
+    }
+    
+    .pause-menu h1 {
+      color: #667eea;
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #667eea;
+    }
+    
+    .pause-menu p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      color: #ccc;
+    }
+    
+    .resume-btn {
+      background: linear-gradient(135deg, #00ff00, #00cc00);
+      color: #000;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.5em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(0, 255, 0, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      margin: 10px;
+    }
+    
+    .resume-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 30px rgba(0, 255, 0, 0.8);
+    }
+    
+    .restart-btn-pause {
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.5em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(255, 102, 0, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      margin: 10px;
+    }
+    
+    .restart-btn-pause:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 30px rgba(255, 102, 0, 0.8);
     }
     
     .achievement-notification {
@@ -1252,6 +1480,175 @@ interface WeaponUpgrade {
       min-width: 40px;
       text-align: center;
     }
+    
+    /* Responsive Media Queries */
+    @media (max-width: 1300px) {
+      .instructions {
+        max-width: 500px;
+        padding: 20px;
+      }
+      
+      .leaderboard {
+        width: 500px;
+      }
+      
+      .achievements-panel {
+        width: 400px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .hud {
+        padding: 10px;
+        gap: 5px;
+      }
+      
+      .stats {
+        gap: 10px;
+      }
+      
+      .stat .value {
+        font-size: 18px;
+      }
+      
+      .health-bg {
+        width: 150px;
+      }
+      
+      .instructions {
+        max-width: 90vw;
+        padding: 15px;
+        max-height: 90vh;
+      }
+      
+      .instructions h1 {
+        font-size: 1.5em;
+      }
+      
+      .instructions h2 {
+        font-size: 1.1em;
+      }
+      
+      .instructions p {
+        font-size: 0.85em;
+      }
+      
+      .leaderboard {
+        width: 90vw;
+        max-width: 400px;
+        padding: 15px;
+      }
+      
+      .leaderboard-entry {
+        font-size: 0.85em;
+        padding: 8px;
+      }
+      
+      .achievements-panel {
+        width: 90vw;
+        max-width: 350px;
+        padding: 15px;
+      }
+      
+      .achievement-item {
+        padding: 10px;
+      }
+      
+      .achievement-item-icon {
+        font-size: 2em;
+      }
+      
+      .leaderboard-toggle,
+      .achievements-toggle,
+      .support-btn,
+      .pause-btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+      }
+      
+      .pause-menu {
+        padding: 30px;
+        max-width: 90vw;
+      }
+      
+      .pause-menu h1 {
+        font-size: 2em;
+      }
+      
+      .resume-btn,
+      .restart-btn-pause {
+        padding: 12px 30px;
+        font-size: 1.2em;
+      }
+      
+      .weapon-info {
+        bottom: 10px;
+        left: 10px;
+      }
+      
+      .weapon-level,
+      .kill-streak {
+        font-size: 0.9em;
+        padding: 8px 12px;
+      }
+      
+      .mini-map {
+        bottom: 10px;
+        right: 10px;
+        transform: scale(0.8);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .hud {
+        padding: 5px;
+      }
+      
+      .stats {
+        flex-direction: column;
+        gap: 5px;
+      }
+      
+      .stat {
+        flex-direction: row;
+        gap: 10px;
+      }
+      
+      .stat .value {
+        font-size: 16px;
+      }
+      
+      .instructions h1 {
+        font-size: 1.2em;
+      }
+      
+      .start-btn {
+        padding: 15px 40px;
+        font-size: 1.5em;
+      }
+      
+      .leaderboard-toggle,
+      .achievements-toggle,
+      .support-btn {
+        top: auto;
+        right: 5px;
+        padding: 6px 12px;
+        font-size: 0.8em;
+      }
+      
+      .achievements-toggle {
+        top: auto;
+        bottom: 60px;
+      }
+      
+      .support-btn {
+        bottom: 20px;
+      }
+      
+      .mini-map {
+        display: none;
+      }
+    }
   `]
 })
 export class GameComponent implements OnInit, OnDestroy {
@@ -1332,6 +1729,7 @@ export class GameComponent implements OnInit, OnDestroy {
   kills: number = 0;
   gameOver: boolean = false;
   gameStarted: boolean = false;
+  isPaused: boolean = false;
   
   lastShot: number = 0;
   shootCooldown: number = 150;
@@ -1339,6 +1737,9 @@ export class GameComponent implements OnInit, OnDestroy {
   bossSpawned: boolean = false;
   
   leaderboard: LeaderboardEntry[] = [];
+  leaderboard24h: LeaderboardEntry[] = [];
+  leaderboardAllTime: LeaderboardEntry[] = [];
+  leaderboardType: '24h' | 'alltime' = 'alltime';
   showLeaderboard: boolean = false;
   playerName: string = '';
   playerNameSubmitted: boolean = false;
@@ -1355,6 +1756,16 @@ export class GameComponent implements OnInit, OnDestroy {
   
   @HostListener('window:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
+    // ESC to pause/unpause
+    if (event.key === 'Escape' && this.gameStarted && !this.gameOver) {
+      event.preventDefault();
+      this.togglePause();
+      return;
+    }
+    
+    // Don't process other keys when paused
+    if (this.isPaused) return;
+    
     this.keys[event.key.toLowerCase()] = true;
     if (event.key === ' ' && this.gameStarted && !this.gameOver) {
       event.preventDefault();
@@ -1386,7 +1797,13 @@ export class GameComponent implements OnInit, OnDestroy {
     this.mouseY = event.clientY - rect.top;
   }
   
+  @HostListener('window:resize')
+  onResize() {
+    this.updateCanvasSize();
+  }
+  
   ngOnInit() {
+    this.updateCanvasSize();
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
     this.cleanupLocalStorage(); // Clean duplicates on startup
     this.loadLeaderboard();
@@ -1395,6 +1812,41 @@ export class GameComponent implements OnInit, OnDestroy {
     this.loadStats();
     this.loadAdSense();
     this.render();
+  }
+  
+  updateCanvasSize() {
+    const maxWidth = 1200;
+    const maxHeight = 800;
+    const minWidth = 600;
+    const minHeight = 400;
+    
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // Calculate responsive size with padding
+    let width = Math.min(maxWidth, windowWidth - 100);
+    let height = Math.min(maxHeight, windowHeight - 300);
+    
+    // Maintain aspect ratio (3:2)
+    const aspectRatio = 3 / 2;
+    if (width / height > aspectRatio) {
+      width = height * aspectRatio;
+    } else {
+      height = width / aspectRatio;
+    }
+    
+    // Apply minimum constraints
+    width = Math.max(minWidth, width);
+    height = Math.max(minHeight, height);
+    
+    this.canvasWidth = Math.floor(width);
+    this.canvasHeight = Math.floor(height);
+    
+    // Update player position to stay centered
+    if (this.player) {
+      this.player.x = Math.min(this.player.x, this.canvasWidth - this.player.width);
+      this.player.y = Math.min(this.player.y, this.canvasHeight - this.player.height);
+    }
   }
   
   cleanupLocalStorage() {
@@ -1407,6 +1859,11 @@ export class GameComponent implements OnInit, OnDestroy {
     this.gameStarted = true;
     this.resetGame();
     this.gameLoop();
+  }
+  
+  togglePause() {
+    if (!this.gameStarted || this.gameOver) return;
+    this.isPaused = !this.isPaused;
   }
   
   resetGame() {
@@ -1464,7 +1921,10 @@ export class GameComponent implements OnInit, OnDestroy {
   gameLoop() {
     if (this.gameOver) return;
     
-    this.update();
+    if (!this.isPaused) {
+      this.update();
+    }
+    
     this.render();
     this.animationId = requestAnimationFrame(() => this.gameLoop());
   }
@@ -2349,21 +2809,57 @@ export class GameComponent implements OnInit, OnDestroy {
   
   loadLeaderboard() {
     console.log('Loading leaderboard from:', `${this.apiUrl}/leaderboard`);
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard`)
+    
+    // Load all-time leaderboard
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime`)
       .subscribe({
         next: (data) => {
-          console.log('Leaderboard loaded:', data);
-          this.leaderboard = this.deduplicateLeaderboard(data).slice(0, 10);
+          console.log('All-time leaderboard loaded:', data);
+          this.leaderboardAllTime = this.deduplicateLeaderboard(data).slice(0, 10);
+          this.leaderboard = this.leaderboardAllTime;
         },
         error: (err) => {
-          console.error('Failed to load leaderboard from server:', err);
-          console.log('Using localStorage fallback');
+          console.error('Failed to load all-time leaderboard:', err);
           const saved = localStorage.getItem('bulletHellLeaderboard');
           if (saved) {
-            this.leaderboard = this.deduplicateLeaderboard(JSON.parse(saved));
+            const deduplicated = this.deduplicateLeaderboard(JSON.parse(saved));
+            this.leaderboardAllTime = deduplicated;
+            this.leaderboard = this.leaderboardAllTime;
           }
         }
       });
+    
+    // Load 24h leaderboard
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h`)
+      .subscribe({
+        next: (data) => {
+          console.log('24h leaderboard loaded:', data);
+          this.leaderboard24h = this.deduplicateLeaderboard(data).slice(0, 10);
+        },
+        error: (err) => {
+          console.error('Failed to load 24h leaderboard:', err);
+          const saved = localStorage.getItem('bulletHellLeaderboard');
+          if (saved) {
+            const deduplicated = this.deduplicateLeaderboard(JSON.parse(saved));
+            this.leaderboard24h = this.filter24h(deduplicated);
+          }
+        }
+      });
+  }
+  
+  filter24h(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+    const now = new Date().getTime();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    
+    return entries.filter(entry => {
+      if (!entry.date) return false;
+      const entryTime = new Date(entry.date).getTime();
+      return (now - entryTime) <= twentyFourHours;
+    });
+  }
+  
+  switchLeaderboardType(type: '24h' | 'alltime') {
+    this.leaderboardType = type;
   }
   
   deduplicateLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
@@ -2510,6 +3006,22 @@ export class GameComponent implements OnInit, OnDestroy {
         condition: (stats) => stats.kills >= 100
       },
       {
+        id: 'genocide',
+        title: 'Genocide',
+        description: 'Kill 500 enemies',
+        icon: '💣',
+        unlocked: false,
+        condition: (stats) => stats.kills >= 500
+      },
+      {
+        id: 'annihilator',
+        title: 'Annihilator',
+        description: 'Kill 1000 enemies',
+        icon: '⚡',
+        unlocked: false,
+        condition: (stats) => stats.kills >= 1000
+      },
+      {
         id: 'survivor',
         title: 'Survivor',
         description: 'Reach wave 5',
@@ -2534,6 +3046,22 @@ export class GameComponent implements OnInit, OnDestroy {
         condition: (stats) => stats.wave >= 20
       },
       {
+        id: 'immortal',
+        title: 'Immortal',
+        description: 'Reach wave 30',
+        icon: '🔥',
+        unlocked: false,
+        condition: (stats) => stats.wave >= 30
+      },
+      {
+        id: 'god_mode',
+        title: 'God Mode',
+        description: 'Reach wave 50',
+        icon: '😇',
+        unlocked: false,
+        condition: (stats) => stats.wave >= 50
+      },
+      {
         id: 'high_score',
         title: 'High Score',
         description: 'Score 1000 points',
@@ -2550,6 +3078,14 @@ export class GameComponent implements OnInit, OnDestroy {
         condition: (stats) => stats.score >= 5000
       },
       {
+        id: 'score_legend',
+        title: 'Score Legend',
+        description: 'Score 10000 points',
+        icon: '💰',
+        unlocked: false,
+        condition: (stats) => stats.score >= 10000
+      },
+      {
         id: 'dedication',
         title: 'Dedication',
         description: 'Play 10 games',
@@ -2558,28 +3094,92 @@ export class GameComponent implements OnInit, OnDestroy {
         condition: (stats) => stats.totalGamesPlayed >= 10
       },
       {
+        id: 'addicted',
+        title: 'Addicted',
+        description: 'Play 50 games',
+        icon: '🕹️',
+        unlocked: false,
+        condition: (stats) => stats.totalGamesPlayed >= 50
+      },
+      {
+        id: 'no_life',
+        title: 'No Life',
+        description: 'Play 100 games',
+        icon: '🤖',
+        unlocked: false,
+        condition: (stats) => stats.totalGamesPlayed >= 100
+      },
+      {
         id: 'boss_slayer',
         title: 'Boss Slayer',
         description: 'Defeat a boss',
         icon: '🐉',
         unlocked: false,
-        condition: (stats) => stats.wave >= 5 // Boss appears every 5 waves
+        condition: (stats) => stats.wave >= 5
       },
       {
-        id: 'flawless',
-        title: 'Flawless Victory',
-        description: 'Complete wave 1 without taking damage',
-        icon: '✨',
+        id: 'boss_hunter',
+        title: 'Boss Hunter',
+        description: 'Defeat 5 bosses',
+        icon: '🗡️',
         unlocked: false,
-        condition: (stats) => false // Special condition checked in game
+        condition: (stats) => stats.wave >= 25
       },
       {
-        id: 'bulletproof',
-        title: 'Bulletproof',
-        description: 'Score 500 points without dying',
-        icon: '🛡️',
+        id: 'boss_destroyer',
+        title: 'Boss Destroyer',
+        description: 'Defeat 10 bosses',
+        icon: '⚔️',
         unlocked: false,
-        condition: (stats) => stats.score >= 500
+        condition: (stats) => stats.wave >= 50
+      },
+      {
+        id: 'combo_starter',
+        title: 'Combo Starter',
+        description: 'Reach 3x combo',
+        icon: '🔗',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'combo_master',
+        title: 'Combo Master',
+        description: 'Reach 5x combo',
+        icon: '⛓️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'weapon_upgrade',
+        title: 'Weapon Upgrade',
+        description: 'Upgrade weapon to level 2',
+        icon: '🔫',
+        unlocked: false,
+        condition: (stats) => stats.kills >= 25
+      },
+      {
+        id: 'max_weapon',
+        title: 'Max Weapon',
+        description: 'Upgrade weapon to max level (5)',
+        icon: '💥',
+        unlocked: false,
+        condition: (stats) => stats.kills >= 100
+      },
+      {
+        id: 'speed_demon',
+        title: 'Speed Demon',
+        description: 'Kill 10 enemies in 5 seconds',
+        icon: '💨',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'unstoppable',
+        title: 'Unstoppable',
+        description: 'Get 10 kill streak',
+        icon: '🔥',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
       }
     ];
   }

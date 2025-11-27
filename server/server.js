@@ -22,8 +22,21 @@ async function initLeaderboard() {
 // Get leaderboard
 app.get('/api/leaderboard', async (req, res) => {
   try {
+    const { type } = req.query; // '24h' or 'alltime'
     const data = await fs.readFile(DATA_FILE, 'utf8');
-    const leaderboard = JSON.parse(data);
+    let leaderboard = JSON.parse(data);
+    
+    // Filter by 24h if requested
+    if (type === '24h') {
+      const now = new Date().getTime();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      leaderboard = leaderboard.filter(entry => {
+        if (!entry.date) return false;
+        const entryTime = new Date(entry.date).getTime();
+        return (now - entryTime) <= twentyFourHours;
+      });
+    }
+    
     res.json(leaderboard);
   } catch (error) {
     console.error('Error reading leaderboard:', error);

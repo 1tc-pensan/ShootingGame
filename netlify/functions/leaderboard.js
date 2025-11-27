@@ -26,8 +26,21 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'GET') {
     try {
+      const type = event.queryStringParameters?.type; // '24h' or 'alltime'
       const data = await fs.readFile(DATA_FILE, 'utf8');
-      const leaderboard = JSON.parse(data);
+      let leaderboard = JSON.parse(data);
+      
+      // Filter by 24h if requested
+      if (type === '24h') {
+        const now = new Date().getTime();
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        leaderboard = leaderboard.filter(entry => {
+          if (!entry.date) return false;
+          const entryTime = new Date(entry.date).getTime();
+          return (now - entryTime) <= twentyFourHours;
+        });
+      }
+      
       return {
         statusCode: 200,
         headers,
