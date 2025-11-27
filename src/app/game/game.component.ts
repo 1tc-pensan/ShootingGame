@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, HostListener, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, ViewChild, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -13,6 +13,13 @@ interface Player {
   health: number;
   maxHealth: number;
   invulnerable: number;
+  color: string;
+  shape: 'square' | 'circle' | 'triangle' | 'diamond';
+}
+
+interface PlayerCustomization {
+  color: string;
+  shape: 'square' | 'circle' | 'triangle' | 'diamond';
 }
 
 interface Bullet {
@@ -107,6 +114,12 @@ interface WeaponUpgrade {
   bulletCount: number;
   bulletSpread: number;
   bulletSize: number;
+}
+
+interface ColorOption {
+  name: string;
+  value: string;
+  glowColor: string;
 }
 
 @Component({
@@ -352,6 +365,62 @@ interface WeaponUpgrade {
           <p><strong>Kemény bullet hell akció!</strong> Élj túl végtelen ellenséges hullámokat!</p>
           <p>🎯 Különböző ellenség típusok • 💪 Boss minden 5. hullámban • ⚡ Power-upok és fejlesztések</p>
         </div>
+        
+        <!-- Character Customization -->
+        <div class="customization-section">
+          <h2>🎨 Karakter Testreszabás</h2>
+          <div class="customization-grid">
+            <div class="customization-option">
+              <h3>Szín:</h3>
+              <div class="color-options">
+                <button 
+                  *ngFor="let color of colorOptions"
+                  class="color-btn"
+                  [style.background]="color.value"
+                  [style.box-shadow]="'0 0 10px ' + color.glowColor"
+                  [class.selected]="playerCustomization.color === color.value"
+                  (click)="selectColor(color.value)"
+                  [title]="color.name">
+                  {{ playerCustomization.color === color.value ? '✓' : '' }}
+                </button>
+              </div>
+            </div>
+            <div class="customization-option">
+              <h3>Forma:</h3>
+              <div class="shape-options">
+                <button 
+                  class="shape-btn"
+                  [class.selected]="playerCustomization.shape === 'square'"
+                  (click)="selectShape('square')">
+                  ⬛ Négyzet
+                </button>
+                <button 
+                  class="shape-btn"
+                  [class.selected]="playerCustomization.shape === 'circle'"
+                  (click)="selectShape('circle')">
+                  ⭕ Kör
+                </button>
+                <button 
+                  class="shape-btn"
+                  [class.selected]="playerCustomization.shape === 'triangle'"
+                  (click)="selectShape('triangle')">
+                  🔺 Háromszög
+                </button>
+                <button 
+                  class="shape-btn"
+                  [class.selected]="playerCustomization.shape === 'diamond'"
+                  (click)="selectShape('diamond')">
+                  💎 Gyémánt
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="customization-preview">
+            <p>Előnézet:</p>
+            <canvas #previewCanvas width="100" height="100"></canvas>
+          </div>
+        </div>
+        
         <div class="controls">
           <h2>Controls:</h2>
           <p><strong>W A S D</strong> or <strong>Arrow Keys</strong> - Move</p>
@@ -936,6 +1005,120 @@ interface WeaponUpgrade {
     .copyright a:hover {
       color: #00ffff;
       text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    }
+    
+    .customization-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(0, 255, 0, 0.05);
+      border: 2px solid rgba(0, 255, 0, 0.3);
+      border-radius: 10px;
+    }
+    
+    .customization-section h2 {
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      margin-bottom: 15px;
+    }
+    
+    .customization-section h3 {
+      color: #00ff00;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    
+    .customization-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .customization-option {
+      text-align: center;
+    }
+    
+    .color-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    .color-btn {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #333;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: bold;
+    }
+    
+    .color-btn:hover {
+      transform: scale(1.2);
+    }
+    
+    .color-btn.selected {
+      border-width: 4px;
+      border-color: #fff;
+      transform: scale(1.3);
+    }
+    
+    .shape-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .shape-btn {
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ff00;
+      border: 2px solid rgba(0, 255, 0, 0.3);
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .shape-btn:hover {
+      background: rgba(0, 255, 0, 0.1);
+      border-color: #00ff00;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+    
+    .shape-btn.selected {
+      background: rgba(0, 255, 0, 0.2);
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+      font-weight: bold;
+    }
+    
+    .customization-preview {
+      text-align: center;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+    }
+    
+    .customization-preview p {
+      color: #00ff00;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    
+    .customization-preview canvas {
+      border: 2px solid #00ff00;
+      border-radius: 5px;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
     }
     
     .name-input {
@@ -1547,6 +1730,20 @@ interface WeaponUpgrade {
         font-size: 0.85em;
       }
       
+      .customization-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      
+      .color-options {
+        gap: 8px;
+      }
+      
+      .color-btn {
+        width: 35px;
+        height: 35px;
+      }
+      
       .leaderboard {
         width: 90vw;
         max-width: 400px;
@@ -1696,8 +1893,9 @@ interface WeaponUpgrade {
     }
   `]
 })
-export class GameComponent implements OnInit, OnDestroy {
+export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('gameCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('previewCanvas') previewCanvasRef?: ElementRef<HTMLCanvasElement>;
   
   private subscriptions = new Subscription();
   private ctx!: CanvasRenderingContext2D;
@@ -1709,6 +1907,23 @@ export class GameComponent implements OnInit, OnDestroy {
   canvasWidth = 1200;
   canvasHeight = 800;
   
+  // Character customization
+  playerCustomization: PlayerCustomization = {
+    color: '#00ff00',
+    shape: 'square'
+  };
+  
+  colorOptions: ColorOption[] = [
+    { name: 'Zöld', value: '#00ff00', glowColor: '#00ff00' },
+    { name: 'Kék', value: '#0099ff', glowColor: '#0099ff' },
+    { name: 'Piros', value: '#ff0000', glowColor: '#ff0000' },
+    { name: 'Lila', value: '#ff00ff', glowColor: '#ff00ff' },
+    { name: 'Sárga', value: '#ffff00', glowColor: '#ffff00' },
+    { name: 'Cyan', value: '#00ffff', glowColor: '#00ffff' },
+    { name: 'Narancs', value: '#ff8800', glowColor: '#ff8800' },
+    { name: 'Rózsaszín', value: '#ff69b4', glowColor: '#ff69b4' }
+  ];
+  
   player: Player = {
     x: 600,
     y: 700,
@@ -1717,7 +1932,9 @@ export class GameComponent implements OnInit, OnDestroy {
     speed: 6,
     health: 100,
     maxHealth: 100,
-    invulnerable: 0
+    invulnerable: 0,
+    color: '#00ff00',
+    shape: 'square'
   };
   
   bullets: Bullet[] = [];
@@ -1857,6 +2074,7 @@ export class GameComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.updateCanvasSize();
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
+    this.loadCustomization();
     this.cleanupLocalStorage(); // Clean duplicates on startup
     this.loadLeaderboard();
     this.initAchievements();
@@ -1864,6 +2082,94 @@ export class GameComponent implements OnInit, OnDestroy {
     this.loadStats();
     this.loadAdSense();
     this.render();
+  }
+  
+  ngAfterViewInit() {
+    this.renderPreview();
+  }
+  
+  selectColor(color: string) {
+    this.playerCustomization.color = color;
+    this.player.color = color;
+    this.saveCustomization();
+    this.renderPreview();
+  }
+  
+  selectShape(shape: 'square' | 'circle' | 'triangle' | 'diamond') {
+    this.playerCustomization.shape = shape;
+    this.player.shape = shape;
+    this.saveCustomization();
+    this.renderPreview();
+  }
+  
+  saveCustomization() {
+    localStorage.setItem('playerCustomization', JSON.stringify(this.playerCustomization));
+  }
+  
+  loadCustomization() {
+    const saved = localStorage.getItem('playerCustomization');
+    if (saved) {
+      this.playerCustomization = JSON.parse(saved);
+      this.player.color = this.playerCustomization.color;
+      this.player.shape = this.playerCustomization.shape;
+    }
+  }
+  
+  renderPreview() {
+    if (!this.previewCanvasRef) return;
+    
+    const canvas = this.previewCanvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, 100, 100);
+    
+    // Draw player shape
+    const centerX = 50;
+    const centerY = 50;
+    const size = 30;
+    
+    ctx.fillStyle = this.playerCustomization.color;
+    ctx.strokeStyle = this.playerCustomization.color;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.playerCustomization.color;
+    
+    switch (this.playerCustomization.shape) {
+      case 'square':
+        ctx.fillRect(centerX - size / 2, centerY - size / 2, size, size);
+        ctx.strokeRect(centerX - size / 2 - 2, centerY - size / 2 - 2, size + 4, size + 4);
+        break;
+      case 'circle':
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+      case 'triangle':
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY - size / 2);
+        ctx.lineTo(centerX - size / 2, centerY + size / 2);
+        ctx.lineTo(centerX + size / 2, centerY + size / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      case 'diamond':
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY - size / 2);
+        ctx.lineTo(centerX + size / 2, centerY);
+        ctx.lineTo(centerX, centerY + size / 2);
+        ctx.lineTo(centerX - size / 2, centerY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+    }
+    
+    ctx.shadowBlur = 0;
   }
   
   updateCanvasSize() {
@@ -2088,7 +2394,7 @@ export class GameComponent implements OnInit, OnDestroy {
         vx: (Math.random() - 0.5) * 2,
         vy: (Math.random() - 0.5) * 2,
         life: 30,
-        color: this.ultimateActive ? '#00ffff' : '#00ff00',
+        color: this.ultimateActive ? '#00ffff' : this.player.color,
         size: Math.random() * 3 + 2
       });
     }
@@ -2861,12 +3167,50 @@ export class GameComponent implements OnInit, OnDestroy {
       this.ctx.globalAlpha = 1;
     }
     
-    this.ctx.fillStyle = '#00ff00';
-    this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
-    this.ctx.strokeStyle = '#00ff00';
+    // Draw player with custom shape
+    const centerX = this.player.x + this.player.width / 2;
+    const centerY = this.player.y + this.player.height / 2;
+    const size = this.player.width;
+    
+    this.ctx.fillStyle = this.player.color;
+    this.ctx.strokeStyle = this.player.color;
     this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(this.player.x - 2, this.player.y - 2, 
-                       this.player.width + 4, this.player.height + 4);
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowColor = this.player.color;
+    
+    switch (this.player.shape) {
+      case 'square':
+        this.ctx.fillRect(this.player.x, this.player.y, size, size);
+        this.ctx.strokeRect(this.player.x - 2, this.player.y - 2, size + 4, size + 4);
+        break;
+      case 'circle':
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        break;
+      case 'triangle':
+        this.ctx.beginPath();
+        this.ctx.moveTo(centerX, this.player.y);
+        this.ctx.lineTo(this.player.x, this.player.y + size);
+        this.ctx.lineTo(this.player.x + size, this.player.y + size);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        break;
+      case 'diamond':
+        this.ctx.beginPath();
+        this.ctx.moveTo(centerX, this.player.y);
+        this.ctx.lineTo(this.player.x + size, centerY);
+        this.ctx.lineTo(centerX, this.player.y + size);
+        this.ctx.lineTo(this.player.x, centerY);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        break;
+    }
+    
+    this.ctx.shadowBlur = 0;
     this.ctx.globalAlpha = 1;
     
     // Aim line
@@ -2979,9 +3323,9 @@ export class GameComponent implements OnInit, OnDestroy {
     // Player (larger and centered)
     const playerX = this.player.x * scaleX;
     const playerY = this.player.y * scaleY;
-    miniCtx.fillStyle = '#00ff00';
+    miniCtx.fillStyle = this.player.color;
     miniCtx.shadowBlur = 5;
-    miniCtx.shadowColor = '#00ff00';
+    miniCtx.shadowColor = this.player.color;
     miniCtx.fillRect(playerX - 3, playerY - 3, 6, 6);
     miniCtx.shadowBlur = 0;
     
