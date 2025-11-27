@@ -271,9 +271,13 @@ interface ColorOption {
           <div 
             *ngFor="let entry of (leaderboardType === '24h' ? leaderboard24h : leaderboardAllTime); let i = index" 
             class="leaderboard-entry"
-            [class.highlight]="entry.name === playerName && justSubmitted">
+            [class.highlight]="entry.name === playerName && justSubmitted"
+            [class.current-player]="entry.name.toLowerCase() === playerName.toLowerCase()">
             <span class="rank">{{ i + 1 }}</span>
-            <span class="name">{{ entry.name }}</span>
+            <span class="name">
+              {{ entry.name }}
+              <span class="you-badge" *ngIf="entry.name.toLowerCase() === playerName.toLowerCase()"> (YOU)</span>
+            </span>
             <span class="score-col">{{ entry.score }}</span>
             <span class="wave-col">{{ entry.wave }}</span>
             <span class="kills-col">{{ entry.kills }}</span>
@@ -1280,6 +1284,22 @@ interface ColorOption {
       background: rgba(0, 255, 0, 0.3);
       border: 2px solid #00ff00;
       animation: glow 1s ease-in-out infinite;
+    }
+    
+    .leaderboard-entry.current-player {
+      background: rgba(0, 255, 255, 0.15);
+      border: 2px solid #00ffff;
+    }
+    
+    .you-badge {
+      color: #ffd700;
+      font-size: 0.8em;
+      font-weight: bold;
+      background: rgba(255, 215, 0, 0.2);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      text-shadow: 0 0 5px #ffd700;
     }
     
     @keyframes glow {
