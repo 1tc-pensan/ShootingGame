@@ -480,7 +480,6 @@ interface ColorOption {
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #0a0a0a;
       min-height: 100vh;
       min-height: -webkit-fill-available;
       font-family: 'Courier New', monospace;
@@ -2127,6 +2126,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateCanvasSize();
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
     this.loadCustomization();
+    this.updatePageBackground();
     this.cleanupLocalStorage(); // Clean duplicates on startup
     this.loadLeaderboard();
     this.initAchievements();
@@ -2150,7 +2150,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   selectBackgroundColor(color: string) {
     this.playerCustomization.backgroundColor = color;
     this.saveCustomization();
+    this.updatePageBackground();
     this.renderPreview();
+  }
+  
+  updatePageBackground() {
+    document.body.style.backgroundColor = this.playerCustomization.backgroundColor;
+    const container = document.querySelector('.game-container') as HTMLElement;
+    if (container) {
+      container.style.backgroundColor = this.playerCustomization.backgroundColor;
+    }
   }
   
   selectShape(shape: 'square' | 'circle' | 'triangle' | 'diamond') {
@@ -2180,8 +2189,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear with selected background color
-    ctx.fillStyle = this.playerCustomization.backgroundColor;
+    // Clear with black (canvas is always black)
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, 100, 100);
     
     // Draw player shape
@@ -3113,8 +3122,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ctx.save();
     this.ctx.translate(shakeX, shakeY);
     
-    // Clear with selected background color
-    this.ctx.fillStyle = this.playerCustomization.backgroundColor;
+    // Clear with black background (canvas)
+    this.ctx.fillStyle = '#000';
     this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     
     // Screen flash effect
