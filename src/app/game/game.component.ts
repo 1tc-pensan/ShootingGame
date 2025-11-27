@@ -1758,6 +1758,13 @@ export class GameComponent implements OnInit, OnDestroy {
   adTimer: number = 5;
   adInterval: any;
   
+  // Extra visual effects
+  screenFlash: number = 0;
+  screenFlashColor: string = '#ffffff';
+  bossWarning: number = 0;
+  bossWarningTimer: number = 0;
+  criticalHitEffect: { x: number, y: number, life: number }[] = [];
+  
   @ViewChild('miniMapCanvas') miniMapRef?: ElementRef<HTMLCanvasElement>;
   
   private http = inject(HttpClient);
@@ -1986,6 +1993,23 @@ export class GameComponent implements OnInit, OnDestroy {
       this.screenShake--;
     }
     
+    // Screen flash effect
+    if (this.screenFlash > 0) {
+      this.screenFlash -= 0.05;
+    }
+    
+    // Boss warning
+    if (this.bossWarning > 0) {
+      this.bossWarning--;
+      this.bossWarningTimer++;
+    }
+    
+    // Critical hit effects
+    this.criticalHitEffect = this.criticalHitEffect.filter(effect => {
+      effect.life--;
+      return effect.life > 0;
+    });
+    
     // Combo timer
     if (this.combo.timer > 0) {
       this.combo.timer--;
@@ -2038,17 +2062,35 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Player movement
     const currentSpeed = this.playerSpeed;
+    let moved = false;
     if (this.keys['w'] || this.keys['arrowup']) {
       this.player.y = Math.max(0, this.player.y - currentSpeed);
+      moved = true;
     }
     if (this.keys['s'] || this.keys['arrowdown']) {
       this.player.y = Math.min(this.canvasHeight - this.player.height, this.player.y + currentSpeed);
+      moved = true;
     }
     if (this.keys['a'] || this.keys['arrowleft']) {
       this.player.x = Math.max(0, this.player.x - currentSpeed);
+      moved = true;
     }
     if (this.keys['d'] || this.keys['arrowright']) {
       this.player.x = Math.min(this.canvasWidth - this.player.width, this.player.x + currentSpeed);
+      moved = true;
+    }
+    
+    // Add player trail particles when moving
+    if (moved && Math.random() < 0.5) {
+      this.particles.push({
+        x: this.player.x + this.player.width / 2,
+        y: this.player.y + this.player.height / 2,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+        life: 30,
+        color: this.ultimateActive ? '#00ffff' : '#00ff00',
+        size: Math.random() * 3 + 2
+      });
     }
     
     if (this.player.invulnerable > 0) {
@@ -2259,7 +2301,17 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Boss every 5 waves
     if (this.wave % 5 === 0 && !this.bossSpawned) {
-      this.spawnBoss();
+      // Boss warning system
+      this.bossWarning = 180; // 3 seconds warning
+      this.bossWarningTimer = 0;
+      
+      setTimeout(() => {
+        this.spawnBoss();
+        this.screenFlash = 1.0;
+        this.screenFlashColor = '#ff0000';
+        this.screenShake = 40;
+      }, 3000);
+      
       this.bossSpawned = true;
       return;
     }
@@ -2357,10 +2409,23 @@ export class GameComponent implements OnInit, OnDestroy {
           if (this.circleRectCollision(bullet.x, bullet.y, bullet.radius, 
                                        enemy.x, enemy.y, enemy.width, enemy.height)) {
             const damage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
-            enemy.health -= damage;
+            
+            // Critical hit chance (15%)
+            const isCritical = Math.random() < 0.15;
+            const finalDamage = isCritical ? damage * 2 : damage;
+            
+            enemy.health -= finalDamage;
             this.bullets.splice(i, 1);
-            this.createParticles(bullet.x, bullet.y, '#ffff00');
-            this.createDamageNumber(bullet.x, bullet.y, damage, '#ffff00');
+            this.createParticles(bullet.x, bullet.y, isCritical ? '#ff00ff' : '#ffff00');
+            this.createDamageNumber(bullet.x, bullet.y, finalDamage, isCritical ? '#ff00ff' : '#ffff00');
+            
+            // Critical hit effects
+            if (isCritical) {
+              this.criticalHitEffect.push({ x: bullet.x, y: bullet.y, life: 30 });
+              this.screenFlash = 0.3;
+              this.screenFlashColor = '#ff00ff';
+              this.screenShake = 5;
+            }
             
             if (enemy.health <= 0) {
               this.enemies.splice(j, 1);
@@ -2403,6 +2468,11 @@ export class GameComponent implements OnInit, OnDestroy {
               
               if (enemy.type === 'boss') {
                 this.screenShake = 30;
+                this.screenFlash = 0.8;
+                this.screenFlashColor = '#ff0000';
+                // Particles explosion for boss death
+                this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0000', 100);
+                this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffff00', 50);
               }
             }
             break;
@@ -2625,15 +2695,46 @@ export class GameComponent implements OnInit, OnDestroy {
     this.ctx.save();
     this.ctx.translate(shakeX, shakeY);
     
+    // Clear
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+    
+    // Screen flash effect
+    if (this.screenFlash > 0) {
+      this.ctx.fillStyle = this.screenFlashColor;
+      this.ctx.globalAlpha = this.screenFlash * 0.5;
+      this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+      this.ctx.globalAlpha = 1;
+    }
+    
+    // Boss warning overlay
+    if (this.bossWarning > 0) {
+      const warningAlpha = 0.3 + Math.sin(this.bossWarningTimer * 0.2) * 0.2;
+      this.ctx.fillStyle = '#ff0000';
+      this.ctx.globalAlpha = warningAlpha;
+      this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+      this.ctx.globalAlpha = 1;
+      
+      // Warning text
+      this.ctx.font = 'bold 60px Courier New';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 5;
+      this.ctx.fillStyle = '#ff0000';
+      this.ctx.shadowBlur = 20;
+      this.ctx.shadowColor = '#ff0000';
+      const warningText = '⚠️ BOSS WARNING ⚠️';
+      this.ctx.strokeText(warningText, this.canvasWidth / 2, this.canvasHeight / 2);
+      this.ctx.fillText(warningText, this.canvasWidth / 2, this.canvasHeight / 2);
+      this.ctx.shadowBlur = 0;
+    }
+    
     // Slow motion tint
     if (this.slowMotion > 0) {
       this.ctx.fillStyle = 'rgba(100, 100, 255, 0.1)';
       this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
-    
-    // Clear
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     
     // Grid background
     this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
@@ -2666,7 +2767,38 @@ export class GameComponent implements OnInit, OnDestroy {
     this.particles.forEach(p => {
       this.ctx.fillStyle = p.color;
       this.ctx.globalAlpha = p.life / 60;
+      this.ctx.shadowBlur = 5;
+      this.ctx.shadowColor = p.color;
       this.ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      this.ctx.shadowBlur = 0;
+    });
+    this.ctx.globalAlpha = 1;
+    
+    // Critical hit effects
+    this.criticalHitEffect.forEach(effect => {
+      const size = (30 - effect.life) * 2;
+      this.ctx.strokeStyle = '#ff00ff';
+      this.ctx.lineWidth = 3;
+      this.ctx.globalAlpha = effect.life / 30;
+      this.ctx.shadowBlur = 15;
+      this.ctx.shadowColor = '#ff00ff';
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, size, 0, Math.PI * 2);
+      this.ctx.stroke();
+      
+      // Star burst lines
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 / 8) * i;
+        const x1 = effect.x + Math.cos(angle) * size;
+        const y1 = effect.y + Math.sin(angle) * size;
+        const x2 = effect.x + Math.cos(angle) * (size + 10);
+        const y2 = effect.y + Math.sin(angle) * (size + 10);
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+      }
+      this.ctx.shadowBlur = 0;
     });
     this.ctx.globalAlpha = 1;
     
@@ -2674,12 +2806,15 @@ export class GameComponent implements OnInit, OnDestroy {
     this.damageNumbers.forEach(d => {
       this.ctx.fillStyle = d.color;
       this.ctx.globalAlpha = d.life / 60;
-      this.ctx.font = 'bold 20px Courier New';
+      this.ctx.font = d.color === '#ff00ff' ? 'bold 28px Courier New' : 'bold 20px Courier New';
       this.ctx.textAlign = 'center';
       this.ctx.strokeStyle = '#000';
       this.ctx.lineWidth = 3;
+      this.ctx.shadowBlur = d.color === '#ff00ff' ? 10 : 0;
+      this.ctx.shadowColor = d.color;
       this.ctx.strokeText(d.value.toString(), d.x, d.y);
       this.ctx.fillText(d.value.toString(), d.x, d.y);
+      this.ctx.shadowBlur = 0;
     });
     this.ctx.globalAlpha = 1;
     
