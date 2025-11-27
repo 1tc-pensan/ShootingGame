@@ -2886,6 +2886,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.slowMotion % 2 === 0) return;
     }
     
+    // Slow motion cooldown
+    if (this.slowMotionCooldown > 0) {
+      this.slowMotionCooldown--;
+    }
+    
     // Kill streak timer
     if (Date.now() - this.lastKillTime > 3000) {
       this.killStreak = 0;
