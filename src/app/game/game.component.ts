@@ -20,6 +20,7 @@ interface Player {
 interface PlayerCustomization {
   color: string;
   shape: 'square' | 'circle' | 'triangle' | 'diamond';
+  backgroundColor: string;
 }
 
 interface Bullet {
@@ -375,7 +376,7 @@ interface ColorOption {
           <h2>🎨 Karakter Testreszabás</h2>
           <div class="customization-grid">
             <div class="customization-option">
-              <h3>Szín:</h3>
+              <h3>Karakter Szín:</h3>
               <div class="color-options">
                 <button 
                   *ngFor="let color of colorOptions"
@@ -415,6 +416,21 @@ interface ColorOption {
                   [class.selected]="playerCustomization.shape === 'diamond'"
                   (click)="selectShape('diamond')">
                   💎 Gyémánt
+                </button>
+              </div>
+            </div>
+            <div class="customization-option full-width">
+              <h3>Háttér Szín:</h3>
+              <div class="color-options">
+                <button 
+                  *ngFor="let bgColor of backgroundColorOptions"
+                  class="color-btn"
+                  [style.background]="bgColor.value"
+                  [style.box-shadow]="'0 0 10px ' + bgColor.glowColor"
+                  [class.selected]="playerCustomization.backgroundColor === bgColor.value"
+                  (click)="selectBackgroundColor(bgColor.value)"
+                  [title]="bgColor.name">
+                  {{ playerCustomization.backgroundColor === bgColor.value ? '✓' : '' }}
                 </button>
               </div>
             </div>
@@ -1036,6 +1052,10 @@ interface ColorOption {
       grid-template-columns: 1fr 1fr;
       gap: 20px;
       margin-bottom: 20px;
+    }
+    
+    .customization-option.full-width {
+      grid-column: 1 / -1;
     }
     
     .customization-option {
@@ -1930,7 +1950,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   // Character customization
   playerCustomization: PlayerCustomization = {
     color: '#00ff00',
-    shape: 'square'
+    shape: 'square',
+    backgroundColor: '#000000'
   };
   
   colorOptions: ColorOption[] = [
@@ -1942,6 +1963,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     { name: 'Cyan', value: '#00ffff', glowColor: '#00ffff' },
     { name: 'Narancs', value: '#ff8800', glowColor: '#ff8800' },
     { name: 'Rózsaszín', value: '#ff69b4', glowColor: '#ff69b4' }
+  ];
+  
+  backgroundColorOptions: ColorOption[] = [
+    { name: 'Fekete', value: '#000000', glowColor: '#666666' },
+    { name: 'Sötétkék', value: '#001a33', glowColor: '#0066cc' },
+    { name: 'Sötétzöld', value: '#001a00', glowColor: '#00cc00' },
+    { name: 'Sötétlila', value: '#1a001a', glowColor: '#cc00cc' },
+    { name: 'Sötétvörös', value: '#1a0000', glowColor: '#cc0000' },
+    { name: 'Sötétszürke', value: '#0a0a0a', glowColor: '#666666' }
   ];
   
   player: Player = {
@@ -2117,6 +2147,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderPreview();
   }
   
+  selectBackgroundColor(color: string) {
+    this.playerCustomization.backgroundColor = color;
+    this.saveCustomization();
+    this.renderPreview();
+  }
+  
   selectShape(shape: 'square' | 'circle' | 'triangle' | 'diamond') {
     this.playerCustomization.shape = shape;
     this.player.shape = shape;
@@ -2144,8 +2180,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear
-    ctx.fillStyle = '#0a0a0a';
+    // Clear with selected background color
+    ctx.fillStyle = this.playerCustomization.backgroundColor;
     ctx.fillRect(0, 0, 100, 100);
     
     // Draw player shape
@@ -3077,8 +3113,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ctx.save();
     this.ctx.translate(shakeX, shakeY);
     
-    // Clear
-    this.ctx.fillStyle = '#000';
+    // Clear with selected background color
+    this.ctx.fillStyle = this.playerCustomization.backgroundColor;
     this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     
     // Screen flash effect
