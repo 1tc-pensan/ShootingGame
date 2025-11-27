@@ -2702,7 +2702,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     // Check Flawless Victory achievement before advancing wave
-    if (this.wave >= 1 && !this.waveDamageTaken) {
+    if (this.wave >= 5 && !this.waveDamageTaken) {
       this.unlockAchievement('flawless_victory');
     }
     
