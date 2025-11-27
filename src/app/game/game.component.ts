@@ -3480,7 +3480,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     ).subscribe({
       next: (response) => {
         console.log('Score submitted successfully:', response);
-        this.leaderboard = response.leaderboard;
+        
+        // Reload full leaderboard from server
+        this.loadLeaderboard();
         
         // Update localStorage with the new leaderboard
         this.saveLeaderboard();
