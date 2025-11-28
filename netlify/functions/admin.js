@@ -159,7 +159,7 @@ exports.handler = async (event) => {
       }
 
       const result = await sql`
-        SELECT s.id, u.username, s.score, s.wave, s.kills, s.submitted_at
+        SELECT s.id, u.username, s.score, s.wave, s.kills, s.created_at
         FROM scores s
         JOIN users u ON s.user_id = u.id
         WHERE s.id = ${scoreId}
