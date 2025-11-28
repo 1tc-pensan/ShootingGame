@@ -353,7 +353,7 @@ interface ColorOption {
       </button>
       
       <button 
-        *ngIf="!showAdminPanel && gameStarted && authService.isAdmin" 
+        *ngIf="!showAdminPanel && authService.isAdmin" 
         (click)="toggleAdminPanel()" 
         class="admin-toggle">
         ⚙️ ADMIN
@@ -1998,10 +1998,33 @@ interface ColorOption {
       box-shadow: 0 8px 25px rgba(0, 170, 255, 0.8);
     }
     
+    .admin-toggle {
+      position: absolute;
+      top: 200px;
+      right: 20px;
+      background: linear-gradient(135deg, #ff0000, #aa0000);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      z-index: 100;
+    }
+    
+    .admin-toggle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 0, 0, 0.8);
+    }
+    
     .support-btn {
       position: absolute;
       top: 260px;
-      right: 20px;
+      right: 120px;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       color: #000;
       border: none;
@@ -2537,29 +2560,6 @@ interface ColorOption {
     }
     
     /* Admin Panel */
-    .admin-toggle {
-      position: absolute;
-      top: 200px;
-      right: 20px;
-      background: linear-gradient(135deg, #ff6600, #ff0000);
-      color: #fff;
-      border: none;
-      padding: 12px 24px;
-      font-size: 1.1em;
-      font-weight: bold;
-      border-radius: 10px;
-      cursor: pointer;
-      box-shadow: 0 5px 15px rgba(255, 102, 0, 0.5);
-      transition: all 0.3s;
-      font-family: 'Courier New', monospace;
-      z-index: 100;
-    }
-    
-    .admin-toggle:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 25px rgba(255, 102, 0, 0.8);
-    }
-    
     .admin-panel {
       position: fixed;
       top: 50%;
