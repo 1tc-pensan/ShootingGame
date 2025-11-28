@@ -3748,7 +3748,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       y: 600,
       width: 40,
       height: 40,
-      speed: 6,
+      speed: 4,
       health: 100,
       maxHealth: 100,
       invulnerable: 0,
@@ -3764,7 +3764,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.spawnWarnings = [];
     this.combo = { count: 0, multiplier: 1, timer: 0 };
     this.screenShake = 0;
-    this.playerSpeed = 6;
+    this.playerSpeed = 4;
     this.playerFireRate = 150;
     this.hasShield = false;
     this.ultimateCharge = 0;
@@ -3794,19 +3794,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   restart() {
-    // Ha pause menüből indítjuk, először zárjuk be a pause-t
-    if (this.isPaused) {
-      this.isPaused = false;
-    }
-    
-    // Kis késleltetés, hogy ne legyen túl gyors az újraindítás
-    setTimeout(() => {
-      this.adWatched = false;
-      this.adTimer = 5;
-      const adElement = document.getElementById('ad-interstitial');
-      if (adElement) adElement.style.display = 'flex';
-      this.startGame();
-    }, 300);
+    this.adWatched = false;
+    this.adTimer = 5;
+    const adElement = document.getElementById('ad-interstitial');
+    if (adElement) adElement.style.display = 'flex';
+    this.startGame();
   }
   
   gameLoop() {
@@ -4385,14 +4377,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
     const configs = {
-      basic: { width: 30, height: 30, health: 50, speed: 1.5 },
-      fast: { width: 25, height: 25, health: 30, speed: 3 },
-      tank: { width: 50, height: 50, health: 150, speed: 0.8 },
-      shooter: { width: 35, height: 35, health: 60, speed: 1 },
-      healer: { width: 28, height: 28, health: 40, speed: 1.2 },
-      exploder: { width: 32, height: 32, health: 35, speed: 2 },
-      dodger: { width: 22, height: 22, health: 25, speed: 3.5 },
-      miniboss: { width: 70, height: 70, health: 250, speed: 0.9 }
+      basic: { width: 30, height: 30, health: 50, speed: 1.0 },
+      fast: { width: 25, height: 25, health: 30, speed: 2.0 },
+      tank: { width: 50, height: 50, health: 150, speed: 0.5 },
+      shooter: { width: 35, height: 35, health: 60, speed: 0.7 },
+      healer: { width: 28, height: 28, health: 40, speed: 0.8 },
+      exploder: { width: 32, height: 32, health: 35, speed: 1.3 },
+      dodger: { width: 22, height: 22, health: 25, speed: 2.3 },
+      miniboss: { width: 70, height: 70, health: 250, speed: 0.6 }
     };
     
     const config = configs[type];
@@ -4449,7 +4441,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         height: 200,
         health: Math.floor(baseHealth * healthScale * 2 + this.wave * 150),
         maxHealth: Math.floor(baseHealth * healthScale * 2 + this.wave * 150),
-        speed: 0.5,
+        speed: 0.3,
         type: 'boss_tank',
         shootTimer: 0,
         movePattern: 0,
@@ -4464,7 +4456,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         height: 120,
         health: Math.floor(baseHealth * healthScale * 0.7 + this.wave * 80),
         maxHealth: Math.floor(baseHealth * healthScale * 0.7 + this.wave * 80),
-        speed: 2.5,
+        speed: 1.6,
         type: 'boss_speed',
         shootTimer: 0,
         movePattern: 0,
@@ -4479,7 +4471,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         height: 150,
         health: Math.floor(baseHealth * healthScale * 1.2 + this.wave * 100),
         maxHealth: Math.floor(baseHealth * healthScale * 1.2 + this.wave * 100),
-        speed: 0.8,
+        speed: 0.5,
         type: 'boss_sniper',
         shootTimer: 0,
         movePattern: 0,
@@ -4494,7 +4486,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         height: 150,
         health: Math.floor(baseHealth * healthScale + this.wave * 100),
         maxHealth: Math.floor(baseHealth * healthScale + this.wave * 100),
-        speed: 1,
+        speed: 0.65,
         type: 'boss',
         shootTimer: 0,
         movePattern: 0,
