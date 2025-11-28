@@ -285,6 +285,19 @@ interface ColorOption {
         <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched">
           📺 Watch Ad to Continue
         </button>
+        <div class="weapon-selector-gameover">
+          <h3>🔫 SELECT WEAPON</h3>
+          <div class="weapon-options">
+            <div 
+              *ngFor="let weapon of weapons" 
+              class="weapon-option"
+              [class.selected]="currentWeapon.name === weapon.name"
+              (click)="selectWeapon(weapon)">
+              <div class="weapon-icon">{{ weapon.name === 'Pistol' ? '🔫' : weapon.name === 'Shotgun' ? '💥' : weapon.name === 'Rifle' ? '🎯' : weapon.name === 'Minigun' ? '🌀' : weapon.name === 'Burst Rifle' ? '⚡' : '🔭' }}</div>
+              <div class="weapon-name">{{ weapon.name }}</div>
+            </div>
+          </div>
+        </div>
         <button (click)="restart()" class="restart-btn">RESTART</button>
       </div>
       
@@ -1231,6 +1244,65 @@ interface ColorOption {
     .restart-btn:hover {
       transform: scale(1.1);
       box-shadow: 0 8px 30px rgba(255, 0, 0, 0.8);
+    }
+    
+    .weapon-selector-gameover {
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 15px;
+      border: 2px solid #00ff00;
+    }
+    
+    .weapon-selector-gameover h3 {
+      margin: 0 0 15px 0;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      font-size: 1.3em;
+    }
+    
+    .weapon-selector-gameover .weapon-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .weapon-selector-gameover .weapon-option {
+      background: rgba(20, 20, 60, 0.8);
+      border: 2px solid #555;
+      border-radius: 10px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .weapon-selector-gameover .weapon-option:hover {
+      border-color: #00ff00;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+      transform: scale(1.05);
+    }
+    
+    .weapon-selector-gameover .weapon-option.selected {
+      background: linear-gradient(135deg, #00aa00, #00ff00);
+      border-color: #00ff00;
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+    }
+    
+    .weapon-selector-gameover .weapon-icon {
+      font-size: 2.5em;
+      margin-bottom: 8px;
+    }
+    
+    .weapon-selector-gameover .weapon-name {
+      font-size: 0.9em;
+      font-weight: bold;
+      color: white;
+    }
+    
+    .weapon-selector-gameover .weapon-option.selected .weapon-name {
+      color: #000;
     }
     
     .instructions {
