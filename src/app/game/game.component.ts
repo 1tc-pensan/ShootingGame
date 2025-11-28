@@ -617,27 +617,51 @@ interface ColorOption {
       </div>
       
       <div class="instructions" *ngIf="!gameStarted && !gameOver">
+        <div class="language-switcher">
+          <button 
+            class="lang-btn" 
+            [class.active]="language === 'hu'"
+            (click)="language = 'hu'">
+            🇭🇺 HU
+          </button>
+          <button 
+            class="lang-btn" 
+            [class.active]="language === 'en'"
+            (click)="language = 'en'">
+            🇬🇧 EN
+          </button>
+        </div>
+        
         <h1>🎮 BULLET HELL SURVIVOR 🎮</h1>
-        <div class="game-description">
+        
+        <!-- Hungarian Description -->
+        <div class="game-description" *ngIf="language === 'hu'">
           <p><strong>Kemény bullet hell akció!</strong> Élj túl végtelen ellenséges hullámokat!</p>
           <p>🎯 Különböző ellenség típusok • 💪 Boss minden 5. hullámban • ⚡ Power-upok és fejlesztések</p>
         </div>
 
+        <!-- English Description -->
+        <div class="game-description" *ngIf="language === 'en'">
+          <p><strong>Hardcore bullet hell action!</strong> Survive endless enemy waves!</p>
+          <p>🎯 Different enemy types • 💪 Boss every 5 waves • ⚡ Power-ups and upgrades</p>
+        </div>
+
         <!-- Login/Register Section -->
         <div class="auth-section" *ngIf="!isLoggedIn">
-          <h2>🔐 Bejelentkezés / Regisztráció</h2>
+          <h2 *ngIf="language === 'hu'">🔐 Bejelentkezés / Regisztráció</h2>
+          <h2 *ngIf="language === 'en'">🔐 Login / Register</h2>
           <div class="auth-tabs">
             <button 
               class="auth-tab-btn" 
               [class.active]="authMode === 'login'"
               (click)="authMode = 'login'">
-              BEJELENTKEZÉS
+              {{ language === 'hu' ? 'BEJELENTKEZÉS' : 'LOGIN' }}
             </button>
             <button 
               class="auth-tab-btn" 
               [class.active]="authMode === 'register'"
               (click)="authMode = 'register'">
-              REGISZTRÁCIÓ
+              {{ language === 'hu' ? 'REGISZTRÁCIÓ' : 'REGISTER' }}
             </button>
           </div>
           
@@ -647,14 +671,14 @@ interface ColorOption {
             <input 
               type="text" 
               [(ngModel)]="authUsername" 
-              placeholder="Felhasználónév"
+              [placeholder]="language === 'hu' ? 'Felhasználónév' : 'Username'"
               class="auth-input"
               maxlength="15">
             
             <input 
               type="password" 
               [(ngModel)]="authPassword" 
-              placeholder="Jelszó"
+              [placeholder]="language === 'hu' ? 'Jelszó' : 'Password'"
               class="auth-input"
               (keyup.enter)="handleAuth()">
             
@@ -662,31 +686,34 @@ interface ColorOption {
               *ngIf="authMode === 'register'"
               type="email" 
               [(ngModel)]="authEmail" 
-              placeholder="Email (opcionális)"
+              [placeholder]="language === 'hu' ? 'Email (opcionális)' : 'Email (optional)'"
               class="auth-input">
             
             <button (click)="handleAuth()" class="auth-submit-btn">
-              {{ authMode === 'login' ? 'BEJELENTKEZÉS' : 'REGISZTRÁCIÓ' }}
+              {{ authMode === 'login' ? (language === 'hu' ? 'BEJELENTKEZÉS' : 'LOGIN') : (language === 'hu' ? 'REGISZTRÁCIÓ' : 'REGISTER') }}
             </button>
             
-            <p class="auth-info">A ranglista mentéséhez bejelentkezés szükséges!</p>
+            <p class="auth-info" *ngIf="language === 'hu'">A ranglista mentéséhez bejelentkezés szükséges!</p>
+            <p class="auth-info" *ngIf="language === 'en'">Login required to save your score on the leaderboard!</p>
           </div>
         </div>
         
         <div class="user-info" *ngIf="isLoggedIn">
           <p>
-            👤 Bejelentkezve: <strong>{{ currentUsername }}</strong>
+            👤 {{ language === 'hu' ? 'Bejelentkezve:' : 'Logged in as:' }} <strong>{{ currentUsername }}</strong>
             <span class="admin-badge" *ngIf="authService.isAdmin">⭐ ADMIN</span>
           </p>
-          <button (click)="handleLogout()" class="logout-btn">Kijelentkezés</button>
+          <button (click)="handleLogout()" class="logout-btn">{{ language === 'hu' ? 'Kijelentkezés' : 'Logout' }}</button>
         </div>
         
         <!-- Character Customization -->
         <div class="customization-section">
-          <h2>🎨 Karakter Testreszabás</h2>
+          <h2 *ngIf="language === 'hu'">🎨 Karakter Testreszabás</h2>
+          <h2 *ngIf="language === 'en'">🎨 Character Customization</h2>
           <div class="customization-grid">
             <div class="customization-option">
-              <h3>Karakter Szín:</h3>
+              <h3 *ngIf="language === 'hu'">Karakter Szín:</h3>
+              <h3 *ngIf="language === 'en'">Character Color:</h3>
               <div class="color-options">
                 <button 
                   *ngFor="let color of colorOptions"
@@ -1320,6 +1347,40 @@ interface ColorOption {
       max-width: 600px;
       max-height: 85vh;
       overflow-y: auto;
+    }
+    
+    .language-switcher {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+    }
+    
+    .lang-btn {
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #00ff00;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .lang-btn:hover {
+      background: rgba(0, 255, 0, 0.2);
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+    }
+    
+    .lang-btn.active {
+      background: linear-gradient(135deg, #00aa00, #00ff00);
+      border-color: #00ff00;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+      color: #000;
     }
     
     .instructions::-webkit-scrollbar {
@@ -3591,6 +3652,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   skills: Skill[] = [];
   showSkills: boolean = false;
   skillPoints: number = 0;
+  
+  // Language
+  language: 'hu' | 'en' = 'hu';
   
   // Admin properties
   showAdminPanel: boolean = false;
