@@ -230,7 +230,7 @@ interface ColorOption {
       </div>
       
       <div class="weapon-info">
-        <div class="weapon-current">{{ currentWeapon.name }}</div>
+        <div class="weapon-current">{{ getWeaponName(currentWeapon.id) }}</div>
         <div class="weapon-level">🔫 WEAPON LV.{{ weaponLevel }}</div>
         <div class="kill-streak" *ngIf="killStreak >= 5">
           🔥 {{ killStreak }} KILL STREAK!
@@ -788,13 +788,20 @@ interface ColorOption {
           <p><strong>E</strong> - Slow Motion (10+ kill streak)</p>
         </div>
         <div class="gameplay-info">
-          <h2>Gameplay:</h2>
-          <p>• Ölj ellenségeket és szerezz pontokat</p>
-          <p>• Minden 25 kill után fejlődik a fegyvered (max 5 shot)</p>
-          <p>• Tartsd fenn a combót a magasabb pontszámért (max 5x)</p>
-          <p>• Boss minden 5. hullámban - nehezedő kihívás!</p>
-          <p>• Power-upok: ❤️ Élet, ⚡ Sebesség, 🔫 Tűzgyorsaság, 🛡️ Pajzs</p>
-          <p>• A nehézség minden hullámmal nő (+20% HP, +8% sebesség)</p>
+          <h2 *ngIf="language === 'hu'">Gameplay:</h2>
+          <h2 *ngIf="language === 'en'">Gameplay:</h2>
+          <p *ngIf="language === 'hu'">• Ölj ellenségeket és szerezz pontokat</p>
+          <p *ngIf="language === 'en'">• Kill enemies and earn points</p>
+          <p *ngIf="language === 'hu'">• Minden 25 kill után fejlődik a fegyvered (max 5 shot)</p>
+          <p *ngIf="language === 'en'">• Your weapon upgrades every 25 kills (max 5 shots)</p>
+          <p *ngIf="language === 'hu'">• Tartsd fenn a combót a magasabb pontszámért (max 5x)</p>
+          <p *ngIf="language === 'en'">• Maintain combo for higher score (max 5x)</p>
+          <p *ngIf="language === 'hu'">• Boss minden 5. hullámban - nehezedő kihívás!</p>
+          <p *ngIf="language === 'en'">• Boss every 5 waves - increasing challenge!</p>
+          <p *ngIf="language === 'hu'">• Power-upok: ❤️ Élet, ⚡ Sebesség, 🔫 Tűzgyorsaság, 🛡️ Pajzs</p>
+          <p *ngIf="language === 'en'">• Power-ups: ❤️ Health, ⚡ Speed, 🔫 Fire Rate, 🛡️ Shield</p>
+          <p *ngIf="language === 'hu'">• A nehézség minden hullámmal nő (+20% HP, +8% sebesség)</p>
+          <p *ngIf="language === 'en'">• Difficulty increases each wave (+20% HP, +8% speed)</p>
         </div>
         <div class="enemy-types">
           <h2>Enemy Types:</h2>
@@ -806,14 +813,15 @@ interface ColorOption {
         </div>
         
         <div class="weapon-selection-menu">
-          <h2>🔫 Válassz fegyvert!</h2>
+          <h2 *ngIf="language === 'hu'">🔫 Válassz fegyvert!</h2>
+          <h2 *ngIf="language === 'en'">🔫 Choose Your Weapon!</h2>
           <div class="weapon-grid">
             <button *ngFor="let weapon of weapons" 
                     (click)="selectWeapon(weapon)"
                     [class.selected]="currentWeapon.id === weapon.id"
                     class="weapon-card">
-              <div class="weapon-name">{{ weapon.name }}</div>
-              <div class="weapon-desc">{{ weapon.description }}</div>
+              <div class="weapon-name">{{ getWeaponName(weapon.id) }}</div>
+              <div class="weapon-desc">{{ getWeaponDesc(weapon.id) }}</div>
               <div class="weapon-stats">
                 <span>⚡ {{ 1000 / weapon.fireRate | number:'1.1-1' }}/s</span>
                 <span>💥 {{ weapon.damage }}</span>
@@ -823,7 +831,8 @@ interface ColorOption {
           </div>
         </div>
         
-        <button (click)="startGame()" class="start-btn">START GAME</button>
+        <button (click)="startGame()" class="start-btn" *ngIf="language === 'hu'">JÁTÉK INDÍTÁSA</button>
+        <button (click)="startGame()" class="start-btn" *ngIf="language === 'en'">START GAME</button>
         <div class="copyright">
           <p>© 2025 Bullet Hell Survivor. All rights reserved.</p>
           <p>Made with ❤️ by <a href="https://ko-fi.com/szeretemakiflit" target="_blank">szeretemakiflit</a></p>
@@ -1338,7 +1347,7 @@ interface ColorOption {
       left: 50%;
       transform: translate(-50%, -50%);
       background: rgba(10, 10, 30, 0.95);
-      padding: 30px;
+      padding: 60px 30px 30px 30px;
       border: 4px solid #00ff00;
       border-radius: 20px;
       text-align: center;
@@ -1355,7 +1364,7 @@ interface ColorOption {
       right: 15px;
       display: flex;
       gap: 8px;
-      z-index: 100;
+      z-index: 10;
     }
     
     .lang-btn {
@@ -3631,6 +3640,51 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       color: '#ff0088'
     }
   ];
+  
+  getWeaponName(weaponId: string): string {
+    const names: any = {
+      'hu': {
+        'pistol': '🔫 Pisztoly',
+        'shotgun': '💥 Sörétes',
+        'rifle': '🎯 Puska',
+        'minigun': '⚡ Minigun',
+        'burst': '💫 Sorozat',
+        'sniper': '🎪 Mesterlövész'
+      },
+      'en': {
+        'pistol': '🔫 Pistol',
+        'shotgun': '💥 Shotgun',
+        'rifle': '🎯 Rifle',
+        'minigun': '⚡ Minigun',
+        'burst': '💫 Burst Rifle',
+        'sniper': '🎪 Sniper'
+      }
+    };
+    return names[this.language][weaponId] || weaponId;
+  }
+  
+  getWeaponDesc(weaponId: string): string {
+    const descs: any = {
+      'hu': {
+        'pistol': 'Gyors tüzelés, közepes sebzés',
+        'shotgun': 'Lassú tüzelés, sok lövedék',
+        'rifle': 'Magas sebzés, pontos',
+        'minigun': 'Nagyon gyors tüzelés, alacsony sebzés',
+        'burst': '3 lövedékes sorozat',
+        'sniper': 'Lassú, brutális sebzés'
+      },
+      'en': {
+        'pistol': 'Fast fire rate, medium damage',
+        'shotgun': 'Slow fire, many bullets',
+        'rifle': 'High damage, accurate',
+        'minigun': 'Very fast fire, low damage',
+        'burst': '3-bullet burst',
+        'sniper': 'Slow, brutal damage'
+      }
+    };
+    return descs[this.language][weaponId] || '';
+  }
+  
   currentWeapon: Weapon = this.weapons[0];
   waveSpawnTimer: number = 0;
   bossSpawned: boolean = false;
