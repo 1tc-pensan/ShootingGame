@@ -134,6 +134,23 @@ interface Weapon {
   specialEffect?: 'explosive' | 'pierce' | 'homing' | 'freeze';
 }
 
+interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  maxLevel: number;
+  currentLevel: number;
+  cost: number;
+  effect: SkillEffect;
+}
+
+interface SkillEffect {
+  type: 'damage' | 'health' | 'speed' | 'firerate' | 'crit' | 'regen' | 'dodge' | 'vampirism' | 'pierce' | 'explosion';
+  value: number;
+  perLevel: number;
+}
+
 interface ColorOption {
   name: string;
   value: string;
@@ -321,6 +338,13 @@ interface ColorOption {
         🎖️ ACHIEVEMENTS
       </button>
       
+      <button 
+        *ngIf="!showSkills && gameStarted" 
+        (click)="toggleSkills()" 
+        class="skills-toggle">
+        🌟 SKILLS
+      </button>
+      
       <a 
         href="https://ko-fi.com/szeretemakiflit" 
         target="_blank"
@@ -381,6 +405,39 @@ interface ColorOption {
             <div class="achievement-status">
               {{ achievement.unlocked ? '✓' : '🔒' }}
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills Panel -->
+      <div class="skills-panel" *ngIf="showSkills">
+        <div class="skills-header">
+          <h2>🌟 SKILLS 🌟</h2>
+          <button (click)="toggleSkills()" class="close-btn">✕</button>
+        </div>
+        <div class="skills-points">
+          <span>Available Points: <span class="points-value">{{skillPoints}}</span></span>
+        </div>
+        <div class="skills-list">
+          <div *ngFor="let skill of skills" class="skill-item">
+            <div class="skill-icon">{{skill.icon}}</div>
+            <div class="skill-info">
+              <div class="skill-name">{{skill.name}}</div>
+              <div class="skill-desc">{{skill.description}}</div>
+              <div class="skill-level">
+                <span class="level-text">Level: {{skill.currentLevel}}/{{skill.maxLevel}}</span>
+                <div class="level-bar">
+                  <div class="level-fill" [style.width.%]="(skill.currentLevel / skill.maxLevel) * 100"></div>
+                </div>
+              </div>
+            </div>
+            <button 
+              class="upgrade-btn" 
+              (click)="upgradeSkill(skill.id)"
+              [disabled]="skill.currentLevel >= skill.maxLevel || skillPoints < skill.cost">
+              <span *ngIf="skill.currentLevel < skill.maxLevel">↑ {{skill.cost}}</span>
+              <span *ngIf="skill.currentLevel >= skill.maxLevel">MAX</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1751,9 +1808,32 @@ interface ColorOption {
       box-shadow: 0 8px 25px rgba(255, 0, 255, 0.8);
     }
     
-    .support-btn {
+    .skills-toggle {
       position: absolute;
       top: 140px;
+      right: 20px;
+      background: linear-gradient(135deg, #00aaff, #0066ff);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 170, 255, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      z-index: 100;
+    }
+    
+    .skills-toggle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(0, 170, 255, 0.8);
+    }
+    
+    .support-btn {
+      position: absolute;
+      top: 200px;
       right: 20px;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       color: #000;
@@ -2085,6 +2165,164 @@ interface ColorOption {
       text-align: center;
     }
     
+    /* Skills Panel */
+    .skills-panel {
+      position: fixed;
+      top: 50%;
+      right: 20px;
+      transform: translateY(-50%);
+      background: rgba(10, 20, 40, 0.98);
+      border: 4px solid #00aaff;
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(0, 170, 255, 0.5);
+      color: white;
+      width: 500px;
+      max-height: 80vh;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .skills-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 30px 30px 15px 30px;
+      border-bottom: 2px solid #00aaff;
+      background: rgba(10, 20, 40, 0.98);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .skills-header h2 {
+      color: #00aaff;
+      margin: 0;
+      font-size: 2em;
+      text-shadow: 0 0 15px #00aaff;
+    }
+    
+    .skills-points {
+      padding: 20px 30px;
+      text-align: center;
+      background: rgba(10, 20, 40, 0.98);
+      position: sticky;
+      top: 92px;
+      z-index: 9;
+      font-size: 1.2em;
+      color: #ccc;
+    }
+    
+    .points-value {
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 1.3em;
+      text-shadow: 0 0 10px #ffd700;
+    }
+    
+    .skills-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 30px 30px 30px;
+    }
+    
+    .skill-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 20px;
+      margin: 15px 0;
+      background: rgba(0, 100, 200, 0.1);
+      border: 2px solid #00aaff;
+      border-radius: 15px;
+      transition: all 0.3s;
+    }
+    
+    .skill-item:hover {
+      background: rgba(0, 100, 200, 0.2);
+      box-shadow: 0 0 20px rgba(0, 170, 255, 0.3);
+      transform: translateX(-5px);
+    }
+    
+    .skill-icon {
+      font-size: 2.5em;
+      min-width: 60px;
+      text-align: center;
+    }
+    
+    .skill-info {
+      flex: 1;
+    }
+    
+    .skill-name {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #00ddff;
+      margin-bottom: 5px;
+    }
+    
+    .skill-desc {
+      font-size: 0.9em;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+    
+    .skill-level {
+      margin-top: 8px;
+    }
+    
+    .level-text {
+      font-size: 0.85em;
+      color: #888;
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .level-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #00aaff;
+    }
+    
+    .level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00aaff, #00ddff);
+      transition: width 0.3s;
+      box-shadow: 0 0 10px #00aaff;
+    }
+    
+    .upgrade-btn {
+      padding: 15px 25px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: 2px solid #00ff00;
+      background: linear-gradient(135deg, #00aa00, #00ff00);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+      font-family: 'Courier New', monospace;
+      min-width: 80px;
+    }
+    
+    .upgrade-btn:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(0, 255, 0, 0.6);
+      background: linear-gradient(135deg, #00cc00, #00ff00);
+    }
+    
+    .upgrade-btn:disabled {
+      background: #333;
+      border-color: #555;
+      color: #666;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
     /* Responsive Media Queries */
     @media (max-width: 1300px) {
       .instructions {
@@ -2097,6 +2335,10 @@ interface ColorOption {
       }
       
       .achievements-panel {
+        width: 400px;
+      }
+      
+      .skills-panel {
         width: 400px;
       }
     }
@@ -2168,6 +2410,12 @@ interface ColorOption {
         padding: 15px;
       }
       
+      .skills-panel {
+        width: 90vw;
+        max-width: 350px;
+        padding: 15px;
+      }
+      
       .achievement-item {
         padding: 10px;
       }
@@ -2178,6 +2426,7 @@ interface ColorOption {
       
       .leaderboard-toggle,
       .achievements-toggle,
+      .skills-toggle,
       .support-btn,
       .pause-btn {
         padding: 8px 16px;
@@ -2267,6 +2516,7 @@ interface ColorOption {
       
       .leaderboard-toggle,
       .achievements-toggle,
+      .skills-toggle,
       .support-btn,
       .pause-btn {
         top: auto;
@@ -2279,6 +2529,11 @@ interface ColorOption {
       .achievements-toggle {
         top: auto;
         bottom: 100px;
+      }
+      
+      .skills-toggle {
+        top: auto;
+        bottom: 50px;
       }
       
       .support-btn {
@@ -2534,6 +2789,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   currentUnlockNotification: Achievement | null = null;
   totalGamesPlayed: number = 0;
   
+  skills: Skill[] = [];
+  showSkills: boolean = false;
+  skillPoints: number = 0;
+  
   get unlockedCount(): number {
     return this.achievements.filter(a => a.unlocked).length;
   }
@@ -2595,6 +2854,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadLeaderboard();
     this.initAchievements();
     this.loadAchievements();
+    this.initSkills();
+    this.loadSkills();
     this.loadStats();
     this.loadAdSense();
     this.render();
@@ -2807,6 +3068,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.playerName = '';
     this.playerNameSubmitted = false;
     this.showLeaderboard = false;
+    
+    // Apply skill bonuses
+    this.applySkillEffects();
   }
   
   restart() {
@@ -2857,6 +3121,25 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.combo.timer === 0) {
         this.combo.count = 0;
         this.combo.multiplier = 1;
+      }
+    }
+    
+    // Health regeneration (every 5 seconds = 300 frames at 60fps)
+    const regenLevel = this.getSkillValue('regen');
+    if (regenLevel > 0) {
+      if (!this.hasOwnProperty('regenTimer')) {
+        (this as any).regenTimer = 0;
+      }
+      (this as any).regenTimer++;
+      if ((this as any).regenTimer >= 300) {
+        (this as any).regenTimer = 0;
+        const healing = regenLevel;
+        if (this.player.health < this.player.maxHealth) {
+          this.player.health = Math.min(this.player.maxHealth, this.player.health + healing);
+          this.createDamageNumber(this.player.x, this.player.y - 30, healing, '#00ff88');
+          this.createParticles(this.player.x + this.player.width / 2, 
+                             this.player.y + this.player.height / 2, '#00ff88', 5);
+        }
       }
     }
     
@@ -3362,6 +3645,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.wave++;
     this.waveDamageTaken = false; // Reset for next wave
+    
+    // Award skill point every 5 waves
+    if (this.wave % 5 === 0) {
+      this.skillPoints++;
+      this.saveSkills();
+      // Show visual notification
+      this.createDamageNumber(this.canvasWidth / 2, this.canvasHeight / 2, this.skillPoints, '#ffd700');
+    }
   }
   
   spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
@@ -3499,12 +3790,36 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                        enemy.x, enemy.y, enemy.width, enemy.height)) {
             const damage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
             
-            // Critical hit chance (5%)
-            const isCritical = Math.random() < 0.05;
+            // Critical hit chance (5% base + skill bonus)
+            const baseCritChance = 0.05;
+            const critBonus = this.getSkillValue('crit') / 100;
+            const isCritical = Math.random() < (baseCritChance + critBonus);
             const finalDamage = isCritical ? damage * 2 : damage;
             
             enemy.health -= finalDamage;
-            this.bullets.splice(i, 1);
+            
+            // Vampirism (life steal)
+            const vampirism = this.getSkillValue('vampirism') / 100;
+            if (vampirism > 0) {
+              const healing = finalDamage * vampirism;
+              this.player.health = Math.min(this.player.maxHealth, this.player.health + healing);
+              if (healing > 0) {
+                this.createDamageNumber(this.player.x, this.player.y - 20, healing, '#00ff00');
+              }
+            }
+            
+            // Pierce - only remove bullet if no pierce remaining
+            const pierceCount = this.getSkillValue('pierce');
+            if (!bullet.hasOwnProperty('pierceRemaining')) {
+              (bullet as any).pierceRemaining = pierceCount;
+            }
+            
+            if ((bullet as any).pierceRemaining <= 0) {
+              this.bullets.splice(i, 1);
+            } else {
+              (bullet as any).pierceRemaining--;
+            }
+            
             this.createParticles(bullet.x, bullet.y, isCritical ? '#ff00ff' : '#ffff00');
             this.createDamageNumber(bullet.x, bullet.y, finalDamage, isCritical ? '#ff00ff' : '#ffff00');
             
@@ -3514,6 +3829,29 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               this.screenFlash = 0.3;
               this.screenFlashColor = '#ff00ff';
               this.screenShake = 5;
+            }
+            
+            // Explosion skill - AoE damage
+            const explosionBonus = this.getSkillValue('explosion') / 100;
+            if (explosionBonus > 0) {
+              const explosionRadius = 80;
+              const explosionDamage = finalDamage * explosionBonus;
+              
+              this.enemies.forEach(other => {
+                if (other !== enemy) {
+                  const dx = other.x + other.width / 2 - bullet.x;
+                  const dy = other.y + other.height / 2 - bullet.y;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  
+                  if (dist < explosionRadius) {
+                    other.health -= explosionDamage;
+                    this.createDamageNumber(other.x, other.y, explosionDamage, '#ff8800');
+                  }
+                }
+              });
+              
+              // Visual effect
+              this.createParticles(bullet.x, bullet.y, '#ff8800', 8);
             }
             
             if (enemy.health <= 0) {
@@ -3637,10 +3975,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                      this.player.x, this.player.y, 
                                      this.player.width, this.player.height)) {
           if (this.player.invulnerable === 0) {
-            this.player.health -= bullet.damage;
-            this.player.invulnerable = 60;
-            this.waveDamageTaken = true;
-            this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+            // Dodge chance
+            const dodgeChance = this.getSkillValue('dodge') / 100;
+            const dodged = Math.random() < dodgeChance;
+            
+            if (dodged) {
+              this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
+              this.createParticles(bullet.x, bullet.y, '#00ddff', 10);
+            } else {
+              this.player.health -= bullet.damage;
+              this.player.invulnerable = 60;
+              this.waveDamageTaken = true;
+              this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+            }
           }
           this.bullets.splice(i, 1);
         }
@@ -3652,12 +3999,23 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       for (const enemy of this.enemies) {
         if (this.rectCollision(this.player.x, this.player.y, this.player.width, this.player.height,
                                enemy.x, enemy.y, enemy.width, enemy.height)) {
-          this.player.health -= 25;
-          this.player.invulnerable = 60;
-          this.waveDamageTaken = true;
-          this.screenShake = 20;
-          this.createParticles(this.player.x + this.player.width / 2, 
-                             this.player.y + this.player.height / 2, '#ff0000', 20);
+          // Dodge chance
+          const dodgeChance = this.getSkillValue('dodge') / 100;
+          const dodged = Math.random() < dodgeChance;
+          
+          if (dodged) {
+            this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
+            this.createParticles(this.player.x + this.player.width / 2, 
+                               this.player.y + this.player.height / 2, '#00ddff', 15);
+            this.player.invulnerable = 30; // Short invulnerability after dodge
+          } else {
+            this.player.health -= 25;
+            this.player.invulnerable = 60;
+            this.waveDamageTaken = true;
+            this.screenShake = 20;
+            this.createParticles(this.player.x + this.player.width / 2, 
+                               this.player.y + this.player.height / 2, '#ff0000', 20);
+          }
         }
       }
     }
@@ -4626,6 +4984,198 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         condition: (stats) => false // Checked in game
       }
     ];
+  }
+  
+  initSkills() {
+    this.skills = [
+      {
+        id: 'damage',
+        name: 'Damage Boost',
+        description: '+5% damage per level',
+        icon: '💪',
+        maxLevel: 10,
+        currentLevel: 0,
+        cost: 1,
+        effect: { type: 'damage', value: 5, perLevel: 5 }
+      },
+      {
+        id: 'health',
+        name: 'Max Health',
+        description: '+10 max health per level',
+        icon: '❤️',
+        maxLevel: 10,
+        currentLevel: 0,
+        cost: 1,
+        effect: { type: 'health', value: 10, perLevel: 10 }
+      },
+      {
+        id: 'speed',
+        name: 'Movement Speed',
+        description: '+5% speed per level',
+        icon: '⚡',
+        maxLevel: 5,
+        currentLevel: 0,
+        cost: 1,
+        effect: { type: 'speed', value: 5, perLevel: 5 }
+      },
+      {
+        id: 'firerate',
+        name: 'Fire Rate',
+        description: '+5% fire rate per level',
+        icon: '🔫',
+        maxLevel: 8,
+        currentLevel: 0,
+        cost: 1,
+        effect: { type: 'firerate', value: 5, perLevel: 5 }
+      },
+      {
+        id: 'crit',
+        name: 'Critical Hit',
+        description: '+2% crit chance per level',
+        icon: '💥',
+        maxLevel: 5,
+        currentLevel: 0,
+        cost: 2,
+        effect: { type: 'crit', value: 2, perLevel: 2 }
+      },
+      {
+        id: 'regen',
+        name: 'Health Regeneration',
+        description: 'Regen 1 HP every 5 seconds per level',
+        icon: '🌿',
+        maxLevel: 3,
+        currentLevel: 0,
+        cost: 2,
+        effect: { type: 'regen', value: 1, perLevel: 1 }
+      },
+      {
+        id: 'dodge',
+        name: 'Dodge Chance',
+        description: '+3% dodge chance per level',
+        icon: '💨',
+        maxLevel: 5,
+        currentLevel: 0,
+        cost: 2,
+        effect: { type: 'dodge', value: 3, perLevel: 3 }
+      },
+      {
+        id: 'vampirism',
+        name: 'Life Steal',
+        description: '+5% life steal per level',
+        icon: '🧛',
+        maxLevel: 4,
+        currentLevel: 0,
+        cost: 3,
+        effect: { type: 'vampirism', value: 5, perLevel: 5 }
+      },
+      {
+        id: 'pierce',
+        name: 'Bullet Pierce',
+        description: 'Bullets pierce +1 enemy per level',
+        icon: '🎯',
+        maxLevel: 3,
+        currentLevel: 0,
+        cost: 3,
+        effect: { type: 'pierce', value: 1, perLevel: 1 }
+      },
+      {
+        id: 'explosion',
+        name: 'Explosive Rounds',
+        description: '+10% AoE damage per level',
+        icon: '💣',
+        maxLevel: 3,
+        currentLevel: 0,
+        cost: 3,
+        effect: { type: 'explosion', value: 10, perLevel: 10 }
+      }
+    ];
+  }
+  
+  loadSkills() {
+    const saved = localStorage.getItem('skills');
+    if (saved) {
+      const savedSkills = JSON.parse(saved);
+      savedSkills.forEach((saved: Skill) => {
+        const skill = this.skills.find(s => s.id === saved.id);
+        if (skill) {
+          skill.currentLevel = saved.currentLevel;
+        }
+      });
+    }
+    
+    const savedPoints = localStorage.getItem('skillPoints');
+    if (savedPoints) {
+      this.skillPoints = parseInt(savedPoints);
+    }
+  }
+  
+  saveSkills() {
+    localStorage.setItem('skills', JSON.stringify(this.skills));
+    localStorage.setItem('skillPoints', this.skillPoints.toString());
+  }
+  
+  upgradeSkill(skillId: string) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (!skill) return;
+    
+    if (skill.currentLevel >= skill.maxLevel) return;
+    if (this.skillPoints < skill.cost) return;
+    
+    skill.currentLevel++;
+    this.skillPoints -= skill.cost;
+    
+    // Apply skill effect immediately if in game
+    if (this.gameStarted && !this.gameOver) {
+      this.applySkillEffects();
+    }
+    
+    this.saveSkills();
+  }
+  
+  applySkillEffects() {
+    // Apply skill bonuses to base values
+    const baseMaxHealth = 100;
+    const baseSpeed = 5;
+    
+    let healthBonus = 0;
+    let speedMultiplier = 1;
+    
+    this.skills.forEach(skill => {
+      if (skill.currentLevel === 0) return;
+      
+      const totalBonus = skill.effect.value + (skill.currentLevel - 1) * skill.effect.perLevel;
+      
+      switch (skill.effect.type) {
+        case 'health':
+          healthBonus += totalBonus;
+          break;
+        case 'speed':
+          speedMultiplier += totalBonus / 100;
+          break;
+      }
+    });
+    
+    // Apply to player
+    const oldMaxHealth = this.player.maxHealth;
+    this.player.maxHealth = baseMaxHealth + healthBonus;
+    
+    // Heal proportionally if max health increased
+    if (this.player.maxHealth > oldMaxHealth) {
+      const healthRatio = this.player.health / oldMaxHealth;
+      this.player.health = this.player.maxHealth * healthRatio;
+    }
+    
+    this.player.speed = baseSpeed * speedMultiplier;
+  }
+  
+  getSkillValue(type: SkillEffect['type']): number {
+    const skill = this.skills.find(s => s.effect.type === type);
+    if (!skill || skill.currentLevel === 0) return 0;
+    return skill.effect.value + (skill.currentLevel - 1) * skill.effect.perLevel;
+  }
+  
+  toggleSkills() {
+    this.showSkills = !this.showSkills;
   }
   
   loadAchievements() {
