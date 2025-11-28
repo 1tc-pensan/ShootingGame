@@ -757,7 +757,8 @@ interface ColorOption {
               </div>
             </div>
             <div class="customization-option full-width">
-              <h3>Háttér Szín:</h3>
+              <h3 *ngIf="language === 'hu'">Háttér Szín:</h3>
+              <h3 *ngIf="language === 'en'">Background Color:</h3>
               <div class="color-options">
                 <button 
                   *ngFor="let bgColor of backgroundColorOptions"
@@ -773,7 +774,8 @@ interface ColorOption {
             </div>
           </div>
           <div class="customization-preview">
-            <p>Előnézet:</p>
+            <p *ngIf="language === 'hu'">Előnézet:</p>
+            <p *ngIf="language === 'en'">Preview:</p>
             <canvas #previewCanvas width="100" height="100"></canvas>
           </div>
         </div>
