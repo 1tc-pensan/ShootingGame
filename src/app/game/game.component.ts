@@ -509,12 +509,6 @@ interface ColorOption {
           </button>
           <button 
             class="admin-tab-btn" 
-            [class.active]="adminTab === 'scores'"
-            (click)="adminTab = 'scores'; loadAdminScores()">
-            🏆 SCORES
-          </button>
-          <button 
-            class="admin-tab-btn" 
             [class.active]="adminTab === 'announce'"
             (click)="adminTab = 'announce'">
             📢 ANNOUNCE
@@ -6141,8 +6135,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       alert('✅ Score törölve!');
       if (this.adminTab === 'stats') {
         this.loadAdminStats();
-      } else {
-        this.loadAdminScores();
       }
       this.loadLeaderboard(); // Refresh main leaderboard too
     })
