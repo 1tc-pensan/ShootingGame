@@ -331,6 +331,7 @@ interface ColorOption {
             <span class="kills-col">{{ entry.kills }}</span>
             <span class="action-col" *ngIf="authService.isAdmin">
               <button class="edit-score-btn" (click)="openEditScoreModal(entry)" title="Edit Score">✏️</button>
+              <button class="delete-score-btn" (click)="entry.id && deleteScore(entry.id)" title="Delete Score">🗑️</button>
             </span>
           </div>
         </div>
@@ -1952,11 +1953,28 @@ interface ColorOption {
       font-size: 1em;
       transition: all 0.3s;
       box-shadow: 0 2px 8px rgba(255, 102, 0, 0.4);
+      margin-right: 5px;
     }
     
     .edit-score-btn:hover {
       transform: scale(1.1);
       box-shadow: 0 4px 15px rgba(255, 102, 0, 0.7);
+    }
+    
+    .delete-score-btn {
+      background: linear-gradient(135deg, #ff0000, #aa0000);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(255, 0, 0, 0.4);
+    }
+    
+    .delete-score-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 15px rgba(255, 0, 0, 0.7);
     }
     
     .edit-score-modal {
@@ -6170,13 +6188,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'deleteScore', token, scoreId })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Delete failed');
+      return res.json();
+    })
     .then(() => {
-      alert('✅ Score törölve!');
+      // Refresh all relevant views
+      this.loadLeaderboard();
       if (this.adminTab === 'stats') {
         this.loadAdminStats();
       }
-      this.loadLeaderboard(); // Refresh main leaderboard too
     })
     .catch(err => {
       console.error('Failed to delete score:', err);
