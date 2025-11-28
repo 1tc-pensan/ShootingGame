@@ -146,7 +146,7 @@ interface Skill {
 }
 
 interface SkillEffect {
-  type: 'damage' | 'health' | 'speed' | 'firerate' | 'crit' | 'regen' | 'dodge' | 'vampirism' | 'pierce' | 'explosion';
+  type: 'damage' | 'health' | 'speed' | 'firerate' | 'crit' | 'regen' | 'dodge' | 'pierce' | 'explosion';
   value: number;
   perLevel: number;
 }
@@ -411,7 +411,6 @@ interface ColorOption {
           <h1>⏸️ PAUSED</h1>
           <p>Press ESC or click Resume to continue</p>
           <button (click)="togglePause()" class="resume-btn">▶️ RESUME</button>
-          <button (click)="restart()" class="restart-btn-pause">🔄 RESTART</button>
         </div>
       </div>
       
@@ -3789,6 +3788,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.playerNameSubmitted = false;
     this.showLeaderboard = false;
     
+    // Reset skills on new game
+    this.resetSkills();
+    
     // Apply skill bonuses
     this.applySkillEffects();
   }
@@ -4521,16 +4523,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             const finalDamage = isCritical ? damage * 2 : damage;
             
             enemy.health -= finalDamage;
-            
-            // Vampirism (life steal)
-            const vampirism = this.getSkillValue('vampirism') / 100;
-            if (vampirism > 0) {
-              const healing = finalDamage * vampirism;
-              this.player.health = Math.min(this.player.maxHealth, this.player.health + healing);
-              if (healing > 0) {
-                this.createDamageNumber(this.player.x, this.player.y - 20, healing, '#00ff00');
-              }
-            }
             
             // Pierce - only remove bullet if no pierce remaining
             const pierceCount = this.getSkillValue('pierce');
@@ -5783,16 +5775,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         effect: { type: 'dodge', value: 3, perLevel: 3 }
       },
       {
-        id: 'vampirism',
-        name: 'Life Steal',
-        description: '+5% life steal per level',
-        icon: '🧛',
-        maxLevel: 4,
-        currentLevel: 0,
-        cost: 3,
-        effect: { type: 'vampirism', value: 5, perLevel: 5 }
-      },
-      {
         id: 'pierce',
         name: 'Bullet Pierce',
         description: 'Bullets pierce +1 enemy per level',
@@ -5896,6 +5878,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const skill = this.skills.find(s => s.effect.type === type);
     if (!skill || skill.currentLevel === 0) return 0;
     return skill.effect.value + (skill.currentLevel - 1) * skill.effect.perLevel;
+  }
+  
+  resetSkills() {
+    // Reset all skill levels to 0 at the start of each wave
+    this.skills.forEach(skill => {
+      skill.currentLevel = 0;
+    });
+    this.saveSkills();
   }
   
   toggleSkills() {
