@@ -3794,11 +3794,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   restart() {
-    this.adWatched = false;
-    this.adTimer = 5;
-    const adElement = document.getElementById('ad-interstitial');
-    if (adElement) adElement.style.display = 'flex';
-    this.startGame();
+    // Ha pause menüből indítjuk, először zárjuk be a pause-t
+    if (this.isPaused) {
+      this.isPaused = false;
+    }
+    
+    // Kis késleltetés, hogy ne legyen túl gyors az újraindítás
+    setTimeout(() => {
+      this.adWatched = false;
+      this.adTimer = 5;
+      const adElement = document.getElementById('ad-interstitial');
+      if (adElement) adElement.style.display = 'flex';
+      this.startGame();
+    }, 300);
   }
   
   gameLoop() {
