@@ -1,4 +1,5 @@
 const { initDB, getDB, cleanExpiredSessions } = require('./db');
+const { checkRateLimit } = require('./rate-limiter');
 
 // XSS Protection - Sanitize input
 function sanitizeInput(input) {
@@ -52,11 +53,36 @@ exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://neon.tech;",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'X-XSS-Protection': '1; mode=block'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // Rate limiting for POST requests (score submission)
+  if (event.httpMethod === 'POST') {
+    const clientIP = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+    const rateLimit = checkRateLimit(`score_${clientIP}`);
+    
+    headers['X-RateLimit-Limit'] = '10';
+    headers['X-RateLimit-Remaining'] = rateLimit.remaining.toString();
+    
+    if (!rateLimit.allowed) {
+      headers['Retry-After'] = rateLimit.retryAfter.toString();
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Too many score submissions. Please try again later.',
+          retryAfter: rateLimit.retryAfter 
+        })
+      };
+    }
   }
 
   try {

@@ -1,4 +1,5 @@
 const { initDB, getDB } = require('./db');
+const { checkRateLimit } = require('./rate-limiter');
 
 // XSS Protection - Sanitize input
 function sanitizeInput(input) {
@@ -44,11 +45,34 @@ exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://neon.tech;",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // Rate limiting for admin actions
+  const clientIP = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+  const rateLimit = checkRateLimit(`admin_${clientIP}`);
+  
+  headers['X-RateLimit-Limit'] = '10';
+  headers['X-RateLimit-Remaining'] = rateLimit.remaining.toString();
+  
+  if (!rateLimit.allowed) {
+    headers['Retry-After'] = rateLimit.retryAfter.toString();
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Too many admin requests. Please try again later.',
+        retryAfter: rateLimit.retryAfter 
+      })
+    };
   }
 
   try {

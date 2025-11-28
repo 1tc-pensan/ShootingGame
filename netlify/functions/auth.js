@@ -1,5 +1,6 @@
 const { initDB, getDB, cleanExpiredSessions } = require('./db');
 const crypto = require('crypto');
+const { checkRateLimit } = require('./rate-limiter');
 
 // XSS Protection - Sanitize input
 function sanitizeInput(input) {
@@ -57,7 +58,12 @@ exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://neon.tech; frame-src https://www.google.com;",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -69,6 +75,26 @@ exports.handler = async (event) => {
       statusCode: 405,
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  // Rate limiting - use IP address as identifier
+  const clientIP = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+  const rateLimit = checkRateLimit(clientIP);
+  
+  // Add rate limit headers
+  headers['X-RateLimit-Limit'] = '10';
+  headers['X-RateLimit-Remaining'] = rateLimit.remaining.toString();
+  
+  if (!rateLimit.allowed) {
+    headers['Retry-After'] = rateLimit.retryAfter.toString();
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Too many requests. Please try again later.',
+        retryAfter: rateLimit.retryAfter 
+      })
     };
   }
 
