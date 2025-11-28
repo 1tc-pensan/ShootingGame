@@ -1,5 +1,46 @@
 const { initDB, getDB, cleanExpiredSessions } = require('./db');
 
+// XSS Protection - Sanitize input
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>\"\'&]/g, (char) => {
+      const entities = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '&': '&amp;'
+      };
+      return entities[char];
+    })
+    .trim();
+}
+
+// Validate score data
+function validateScoreData(score, wave, kills) {
+  const scoreNum = parseInt(score);
+  const waveNum = parseInt(wave);
+  const killsNum = parseInt(kills);
+  
+  // Check if valid numbers
+  if (isNaN(scoreNum) || isNaN(waveNum) || isNaN(killsNum)) return false;
+  
+  // Check if positive
+  if (scoreNum < 0 || waveNum < 0 || killsNum < 0) return false;
+  
+  // Check reasonable limits (anti-cheat)
+  if (scoreNum > 10000000) return false; // Max 10M score
+  if (waveNum > 1000) return false; // Max wave 1000
+  if (killsNum > 100000) return false; // Max 100k kills
+  
+  // Basic consistency check
+  if (scoreNum > 0 && killsNum === 0) return false; // Can't have score without kills
+  if (waveNum > 1 && killsNum === 0) return false; // Can't have waves without kills
+  
+  return true;
+}
+
 async function initLeaderboard() {
   await initDB();
 }
@@ -61,6 +102,24 @@ exports.handler = async (event) => {
         };
       }
 
+      // Validate score data
+      if (!validateScoreData(score, wave, kills)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid score data' })
+        };
+      }
+
+      // Validate token format
+      if (typeof token !== 'string' || token.length !== 64) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Invalid token format' })
+        };
+      }
+
       // Clean expired sessions
       await cleanExpiredSessions();
 
@@ -82,6 +141,8 @@ exports.handler = async (event) => {
 
       const userId = sessions[0].user_id;
       const newScore = parseInt(score);
+      const newWave = parseInt(wave);
+      const newKills = parseInt(kills);
 
       // Check if player already has a better score
       const maxScores = await sql`
@@ -104,7 +165,7 @@ exports.handler = async (event) => {
       // Insert new score
       await sql`
         INSERT INTO scores (user_id, score, wave, kills) 
-        VALUES (${userId}, ${newScore}, ${parseInt(wave)}, ${parseInt(kills)})
+        VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
       `;
 
       // Get updated leaderboard

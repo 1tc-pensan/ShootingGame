@@ -1,6 +1,45 @@
 const { initDB, getDB, cleanExpiredSessions } = require('./db');
 const crypto = require('crypto');
 
+// XSS Protection - Sanitize input
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>\"\'&]/g, (char) => {
+      const entities = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '&': '&amp;'
+      };
+      return entities[char];
+    })
+    .trim()
+    .slice(0, 100); // Max 100 chars
+}
+
+// Validate username format
+function validateUsername(username) {
+  if (!username || typeof username !== 'string') return false;
+  // Only alphanumeric, underscore, hyphen, 3-20 chars
+  return /^[a-zA-Z0-9_-]{3,20}$/.test(username);
+}
+
+// Validate email format
+function validateEmail(email) {
+  if (!email) return true; // Email is optional
+  if (typeof email !== 'string') return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Validate password strength
+function validatePassword(password) {
+  if (!password || typeof password !== 'string') return false;
+  // Min 6 chars, max 100 chars
+  return password.length >= 6 && password.length <= 100;
+}
+
 // Simple hash function (in production use bcrypt)
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -46,12 +85,40 @@ exports.handler = async (event) => {
         };
       }
 
+      // Validate inputs
+      if (!validateUsername(username)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid username format. Use 3-20 alphanumeric characters, _ or -' })
+        };
+      }
+
+      if (!validatePassword(password)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Password must be 6-100 characters' })
+        };
+      }
+
+      if (email && !validateEmail(email)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid email format' })
+        };
+      }
+
+      // Sanitize inputs
+      const cleanUsername = sanitizeInput(username);
+      const cleanEmail = email ? sanitizeInput(email) : null;
       const hashedPassword = hashPassword(password);
 
       try {
         const result = await sql`
           INSERT INTO users (username, password, email) 
-          VALUES (${username.toLowerCase()}, ${hashedPassword}, ${email || null})
+          VALUES (${cleanUsername.toLowerCase()}, ${hashedPassword}, ${cleanEmail})
           RETURNING id, username
         `;
 
@@ -98,12 +165,22 @@ exports.handler = async (event) => {
         };
       }
 
+      // Validate inputs
+      if (!validateUsername(username) || !validatePassword(password)) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Invalid credentials' })
+        };
+      }
+
+      const cleanUsername = sanitizeInput(username);
       const hashedPassword = hashPassword(password);
 
       const users = await sql`
         SELECT id, username 
         FROM users 
-        WHERE username = ${username.toLowerCase()} AND password = ${hashedPassword}
+        WHERE username = ${cleanUsername.toLowerCase()} AND password = ${hashedPassword}
       `;
 
       if (users.length === 0) {

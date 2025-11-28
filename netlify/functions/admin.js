@@ -1,5 +1,29 @@
 const { initDB, getDB } = require('./db');
 
+// XSS Protection - Sanitize input
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>\"\'&]/g, (char) => {
+      const entities = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '&': '&amp;'
+      };
+      return entities[char];
+    })
+    .trim()
+    .slice(0, 500); // Max 500 chars for announcements
+}
+
+// Validate numeric ID
+function validateId(id) {
+  const numId = parseInt(id);
+  return !isNaN(numId) && numId > 0 && numId < 2147483647;
+}
+
 // Check if user is admin (user_id = 1)
 async function isAdmin(token) {
   const sql = getDB();
@@ -102,7 +126,16 @@ exports.handler = async (event) => {
     if (action === 'deleteUser') {
       const { userId } = body;
       
-      if (userId === 1) {
+      // Validate user ID
+      if (!validateId(userId)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid user ID' })
+        };
+      }
+      
+      if (parseInt(userId) === 1) {
         return {
           statusCode: 400,
           headers,
@@ -110,9 +143,9 @@ exports.handler = async (event) => {
         };
       }
 
-      await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
-      await sql`DELETE FROM scores WHERE user_id = ${userId}`;
-      await sql`DELETE FROM users WHERE id = ${userId}`;
+      await sql`DELETE FROM sessions WHERE user_id = ${parseInt(userId)}`;
+      await sql`DELETE FROM scores WHERE user_id = ${parseInt(userId)}`;
+      await sql`DELETE FROM users WHERE id = ${parseInt(userId)}`;
 
       return {
         statusCode: 200,
@@ -124,7 +157,17 @@ exports.handler = async (event) => {
     // DELETE SCORE
     if (action === 'deleteScore') {
       const { scoreId } = body;
-      await sql`DELETE FROM scores WHERE id = ${scoreId}`;
+      
+      // Validate score ID
+      if (!validateId(scoreId)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid score ID' })
+        };
+      }
+      
+      await sql`DELETE FROM scores WHERE id = ${parseInt(scoreId)}`;
 
       return {
         statusCode: 200,
@@ -137,11 +180,37 @@ exports.handler = async (event) => {
     if (action === 'editScore') {
       const { scoreId, newScore, newWave, newKills } = body;
       
-      if (!scoreId) {
+      // Validate score ID
+      if (!validateId(scoreId)) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'scoreId required' })
+          body: JSON.stringify({ error: 'Invalid score ID' })
+        };
+      }
+
+      // Validate new values if provided
+      if (newScore !== undefined && (isNaN(parseInt(newScore)) || parseInt(newScore) < 0 || parseInt(newScore) > 10000000)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid score value' })
+        };
+      }
+      
+      if (newWave !== undefined && (isNaN(parseInt(newWave)) || parseInt(newWave) < 0 || parseInt(newWave) > 1000)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid wave value' })
+        };
+      }
+      
+      if (newKills !== undefined && (isNaN(parseInt(newKills)) || parseInt(newKills) < 0 || parseInt(newKills) > 100000)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid kills value' })
         };
       }
 
@@ -202,6 +271,25 @@ exports.handler = async (event) => {
     if (action === 'setAnnouncement') {
       const { message } = body;
       
+      // Validate and sanitize announcement message
+      if (!message || typeof message !== 'string') {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid message' })
+        };
+      }
+      
+      const cleanMessage = sanitizeInput(message);
+      
+      if (cleanMessage.length === 0 || cleanMessage.length > 500) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Message must be 1-500 characters' })
+        };
+      }
+      
       // Store in a simple key-value table or use environment variable
       // For now, we'll create/update a settings table
       await sql`
@@ -214,9 +302,9 @@ exports.handler = async (event) => {
 
       await sql`
         INSERT INTO settings (key, value) 
-        VALUES ('announcement', ${message})
+        VALUES ('announcement', ${cleanMessage})
         ON CONFLICT (key) 
-        DO UPDATE SET value = ${message}, updated_at = CURRENT_TIMESTAMP
+        DO UPDATE SET value = ${cleanMessage}, updated_at = CURRENT_TIMESTAMP
       `;
 
       return {
