@@ -313,6 +313,7 @@ interface ColorOption {
             <span class="score-col">SCORE</span>
             <span class="wave-col">WAVE</span>
             <span class="kills-col">KILLS</span>
+            <span class="action-col" *ngIf="authService.isAdmin"></span>
           </div>
           <div 
             *ngFor="let entry of (leaderboardType === '24h' ? leaderboard24h : leaderboardAllTime); let i = index" 
@@ -327,6 +328,37 @@ interface ColorOption {
             <span class="score-col">{{ entry.score }}</span>
             <span class="wave-col">{{ entry.wave }}</span>
             <span class="kills-col">{{ entry.kills }}</span>
+            <span class="action-col" *ngIf="authService.isAdmin">
+              <button class="edit-score-btn" (click)="openEditScoreModal(entry)" title="Edit Score">✏️</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Score Modal -->
+      <div class="edit-score-modal" *ngIf="showEditScoreModal && authService.isAdmin">
+        <div class="edit-score-content">
+          <h2>✏️ Edit Score</h2>
+          <div class="edit-form">
+            <label>
+              Player: <strong>{{ editingScore?.name }}</strong>
+            </label>
+            <label>
+              Score:
+              <input type="number" [(ngModel)]="editScoreData.score" placeholder="Score">
+            </label>
+            <label>
+              Wave:
+              <input type="number" [(ngModel)]="editScoreData.wave" placeholder="Wave">
+            </label>
+            <label>
+              Kills:
+              <input type="number" [(ngModel)]="editScoreData.kills" placeholder="Kills">
+            </label>
+          </div>
+          <div class="edit-actions">
+            <button class="save-btn" (click)="saveEditedScore()">💾 Save</button>
+            <button class="cancel-btn" (click)="closeEditScoreModal()">❌ Cancel</button>
           </div>
         </div>
       </div>
@@ -1860,7 +1892,7 @@ interface ColorOption {
     
     .leaderboard-entry {
       display: grid;
-      grid-template-columns: 50px 1fr 100px 80px 80px;
+      grid-template-columns: 50px 1fr 100px 80px 80px 60px;
       gap: 10px;
       padding: 12px;
       background: rgba(0, 0, 0, 0.3);
@@ -1928,6 +1960,125 @@ interface ColorOption {
     .score-col { color: #00ff00; }
     .wave-col { color: #ff00ff; }
     .kills-col { color: #ff6600; }
+    
+    .action-col {
+      text-align: center;
+    }
+    
+    .edit-score-btn {
+      background: linear-gradient(135deg, #ffaa00, #ff6600);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(255, 102, 0, 0.4);
+    }
+    
+    .edit-score-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 15px rgba(255, 102, 0, 0.7);
+    }
+    
+    .edit-score-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    
+    .edit-score-content {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 3px solid #ffaa00;
+      border-radius: 15px;
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 0 40px rgba(255, 170, 0, 0.6);
+    }
+    
+    .edit-score-content h2 {
+      color: #ffaa00;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2em;
+      text-shadow: 0 0 10px #ffaa00;
+    }
+    
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .edit-form label {
+      color: white;
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+    
+    .edit-form input {
+      width: 100%;
+      padding: 10px;
+      font-size: 1.1em;
+      border: 2px solid #ffaa00;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      margin-top: 5px;
+    }
+    
+    .edit-form input:focus {
+      outline: none;
+      border-color: #ff6600;
+      box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+    }
+    
+    .edit-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    .edit-actions button {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .save-btn {
+      background: linear-gradient(135deg, #00ff00, #00aa00);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 255, 0, 0.4);
+    }
+    
+    .save-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(0, 255, 0, 0.6);
+    }
+    
+    .cancel-btn {
+      background: linear-gradient(135deg, #ff0000, #aa0000);
+      color: white;
+      box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
+    }
+    
+    .cancel-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(255, 0, 0, 0.6);
+    }
     
     .leaderboard-toggle {
       position: absolute;
@@ -3351,6 +3502,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   adminScoreTotalPages: number = 1;
   announcementText: string = '';
   globalAnnouncement: string = '';
+  
+  // Edit Score Modal
+  showEditScoreModal: boolean = false;
+  editingScore: any = null;
+  editScoreData: any = {
+    score: 0,
+    wave: 0,
+    kills: 0
+  };
   
   get unlockedCount(): number {
     return this.achievements.filter(a => a.unlocked).length;
@@ -6098,6 +6258,54 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     })
     .catch(err => console.error('Failed to load announcement:', err));
+  }
+  
+  // Edit Score Modal Methods
+  openEditScoreModal(entry: any) {
+    this.editingScore = entry;
+    this.editScoreData = {
+      score: entry.score,
+      wave: entry.wave,
+      kills: entry.kills
+    };
+    this.showEditScoreModal = true;
+  }
+  
+  closeEditScoreModal() {
+    this.showEditScoreModal = false;
+    this.editingScore = null;
+  }
+  
+  saveEditedScore() {
+    const token = this.authService.getToken();
+    if (!token || !this.editingScore) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'editScore',
+        token,
+        scoreId: this.editingScore.id,
+        newScore: this.editScoreData.score,
+        newWave: this.editScoreData.wave,
+        newKills: this.editScoreData.kills
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('✅ Score módosítva!');
+        this.closeEditScoreModal();
+        this.loadLeaderboard();
+      } else {
+        alert('❌ Hiba: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      console.error('Failed to edit score:', err);
+      alert('❌ Hiba a score módosításakor!');
+    });
   }
   
   ngOnDestroy() {

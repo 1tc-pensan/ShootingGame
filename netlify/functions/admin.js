@@ -133,6 +133,45 @@ exports.handler = async (event) => {
       };
     }
 
+    // EDIT SCORE
+    if (action === 'editScore') {
+      const { scoreId, newScore, newWave, newKills } = body;
+      
+      if (!scoreId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'scoreId required' })
+        };
+      }
+
+      const updates = [];
+      const values = [];
+
+      if (newScore !== undefined) {
+        await sql`UPDATE scores SET score = ${newScore} WHERE id = ${scoreId}`;
+      }
+      if (newWave !== undefined) {
+        await sql`UPDATE scores SET wave = ${newWave} WHERE id = ${scoreId}`;
+      }
+      if (newKills !== undefined) {
+        await sql`UPDATE scores SET kills = ${newKills} WHERE id = ${scoreId}`;
+      }
+
+      const result = await sql`
+        SELECT s.id, u.username, s.score, s.wave, s.kills, s.submitted_at
+        FROM scores s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.id = ${scoreId}
+      `;
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, score: result[0] })
+      };
+    }
+
     // GET ALL SCORES (with pagination)
     if (action === 'getAllScores') {
       const { page = 1, limit = 50 } = body;
