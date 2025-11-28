@@ -518,6 +518,10 @@ interface ColorOption {
         <div class="admin-content">
           <!-- Stats Tab -->
           <div *ngIf="adminTab === 'stats'" class="admin-stats">
+            <div class="stats-header">
+              <h3>📊 Statistics</h3>
+              <button (click)="loadAdminStats()" class="refresh-btn">🔄 Refresh</button>
+            </div>
             <div class="stat-grid">
               <div class="stat-card">
                 <div class="stat-icon">👥</div>
@@ -559,6 +563,10 @@ interface ColorOption {
           
           <!-- Users Tab -->
           <div *ngIf="adminTab === 'users'" class="admin-users">
+            <div class="stats-header">
+              <h3>👥 Users</h3>
+              <button (click)="loadAdminUsers()" class="refresh-btn">🔄 Refresh</button>
+            </div>
             <div class="user-list">
               <div *ngFor="let user of adminUsers" class="user-item">
                 <div class="user-info-admin">
@@ -2751,6 +2759,37 @@ interface ColorOption {
       flex: 1;
       overflow-y: auto;
       padding: 20px 30px;
+    }
+    
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .stats-header h3 {
+      color: #ff6600;
+      font-size: 1.5em;
+      margin: 0;
+    }
+    
+    .refresh-btn {
+      background: linear-gradient(135deg, #00ff00, #00aa00);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+    }
+    
+    .refresh-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(0, 255, 0, 0.5);
     }
     
     .stat-grid {
