@@ -57,6 +57,7 @@ exports.handler = async (event) => {
 
         const user = result[0];
         const sessionToken = generateToken();
+        const isAdmin = user.id === 1;
 
         // Store session in database
         await sql`
@@ -71,7 +72,8 @@ exports.handler = async (event) => {
             success: true,
             token: sessionToken,
             userId: user.id,
-            username: user.username
+            username: user.username,
+            isAdmin: isAdmin
           })
         };
       } catch (err) {
@@ -114,6 +116,7 @@ exports.handler = async (event) => {
 
       const user = users[0];
       const sessionToken = generateToken();
+      const isAdmin = user.id === 1;
 
       // Clean old sessions for this user
       await sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
@@ -131,7 +134,8 @@ exports.handler = async (event) => {
           success: true,
           token: sessionToken,
           userId: user.id,
-          username: user.username
+          username: user.username,
+          isAdmin: isAdmin
         })
       };
     }
@@ -165,13 +169,16 @@ exports.handler = async (event) => {
       }
 
       const session = sessions[0];
+      const isAdmin = session.user_id === 1;
+      
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           valid: true,
           userId: session.user_id,
-          username: session.username
+          username: session.username,
+          isAdmin: isAdmin
         })
       };
     }

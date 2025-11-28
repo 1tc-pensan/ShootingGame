@@ -7,6 +7,7 @@ export interface User {
   userId: number;
   username: string;
   token: string;
+  isAdmin?: boolean;
 }
 
 @Injectable({
@@ -53,7 +54,8 @@ export class AuthService {
           const user: User = {
             userId: response.userId,
             username: response.username,
-            token: response.token
+            token: response.token,
+            isAdmin: response.isAdmin || false
           };
           localStorage.setItem('currentUser', JSON.stringify(user));
           this.currentUserSubject.next(user);
@@ -73,7 +75,8 @@ export class AuthService {
           const user: User = {
             userId: response.userId,
             username: response.username,
-            token: response.token
+            token: response.token,
+            isAdmin: response.isAdmin || false
           };
           localStorage.setItem('currentUser', JSON.stringify(user));
           this.currentUserSubject.next(user);
@@ -106,5 +109,9 @@ export class AuthService {
 
   getToken(): string | null {
     return this.currentUser?.token || null;
+  }
+
+  get isAdmin(): boolean {
+    return this.currentUser?.isAdmin || false;
   }
 }

@@ -214,6 +214,13 @@ interface ColorOption {
         </div>
       </div>
       
+      <!-- Global Announcement Banner -->
+      <div class="announcement-banner" *ngIf="globalAnnouncement">
+        <span class="announce-icon">📢</span>
+        <span class="announce-text">{{globalAnnouncement}}</span>
+        <span class="announce-icon">📢</span>
+      </div>
+      
       <div class="active-powerups" *ngIf="activePowerUps.length > 0">
         <div *ngFor="let powerup of activePowerUps" class="powerup-indicator" [class]="'powerup-' + powerup.type">
           <span class="powerup-icon">{{ getPowerUpIcon(powerup.type) }}</span>
@@ -345,6 +352,13 @@ interface ColorOption {
         🌟 SKILLS
       </button>
       
+      <button 
+        *ngIf="!showAdminPanel && gameStarted && authService.isAdmin" 
+        (click)="toggleAdminPanel()" 
+        class="admin-toggle">
+        ⚙️ ADMIN
+      </button>
+      
       <a 
         href="https://ko-fi.com/szeretemakiflit" 
         target="_blank"
@@ -442,6 +456,142 @@ interface ColorOption {
         </div>
       </div>
       
+      <!-- Admin Panel -->
+      <div class="admin-panel" *ngIf="showAdminPanel && authService.isAdmin">
+        <div class="admin-header">
+          <h2>⚙️ ADMIN PANEL ⚙️</h2>
+          <button (click)="toggleAdminPanel()" class="close-btn">✕</button>
+        </div>
+        
+        <div class="admin-tabs">
+          <button 
+            class="admin-tab-btn" 
+            [class.active]="adminTab === 'stats'"
+            (click)="adminTab = 'stats'; loadAdminStats()">
+            📊 STATS
+          </button>
+          <button 
+            class="admin-tab-btn" 
+            [class.active]="adminTab === 'users'"
+            (click)="adminTab = 'users'; loadAdminUsers()">
+            👥 USERS
+          </button>
+          <button 
+            class="admin-tab-btn" 
+            [class.active]="adminTab === 'scores'"
+            (click)="adminTab = 'scores'; loadAdminScores()">
+            🏆 SCORES
+          </button>
+          <button 
+            class="admin-tab-btn" 
+            [class.active]="adminTab === 'announce'"
+            (click)="adminTab = 'announce'">
+            📢 ANNOUNCE
+          </button>
+        </div>
+        
+        <div class="admin-content">
+          <!-- Stats Tab -->
+          <div *ngIf="adminTab === 'stats'" class="admin-stats">
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value">{{adminStats.totalUsers}}</div>
+                <div class="stat-label">Total Users</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🎮</div>
+                <div class="stat-value">{{adminStats.totalScores}}</div>
+                <div class="stat-label">Total Games</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">{{adminStats.topScore}}</div>
+                <div class="stat-label">Top Score</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">💀</div>
+                <div class="stat-value">{{adminStats.totalKills}}</div>
+                <div class="stat-label">Total Kills</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🌊</div>
+                <div class="stat-value">{{adminStats.maxWave}}</div>
+                <div class="stat-label">Max Wave</div>
+              </div>
+            </div>
+            
+            <h3>🚨 Suspicious Scores</h3>
+            <div class="suspicious-list">
+              <div *ngFor="let score of adminStats.suspiciousScores" class="suspicious-item">
+                <span>{{score.username}}</span>
+                <span>Score: {{score.score}}</span>
+                <span>Wave: {{score.wave}}</span>
+                <button (click)="deleteScore(score.id)" class="delete-btn">🗑️</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Users Tab -->
+          <div *ngIf="adminTab === 'users'" class="admin-users">
+            <div class="user-list">
+              <div *ngFor="let user of adminUsers" class="user-item">
+                <div class="user-info-admin">
+                  <span class="user-id">#{{user.id}}</span>
+                  <span class="user-name">{{user.username}}</span>
+                  <span class="user-email">{{user.email || 'No email'}}</span>
+                  <span class="user-scores">{{user.score_count}} games</span>
+                  <span class="user-best">Best: {{user.best_score || 0}}</span>
+                </div>
+                <button 
+                  *ngIf="user.id !== 1" 
+                  (click)="deleteUser(user.id)" 
+                  class="delete-btn">
+                  🗑️ DELETE
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Scores Tab -->
+          <div *ngIf="adminTab === 'scores'" class="admin-scores">
+            <div class="score-list">
+              <div *ngFor="let score of adminScores" class="score-item">
+                <span>{{score.username}}</span>
+                <span>{{score.score}} pts</span>
+                <span>W{{score.wave}}</span>
+                <span>{{score.kills}} kills</span>
+                <button (click)="deleteScore(score.id)" class="delete-btn">🗑️</button>
+              </div>
+            </div>
+            <div class="pagination">
+              <button (click)="adminScorePage = adminScorePage - 1; loadAdminScores()" 
+                      [disabled]="adminScorePage === 1">
+                ◀ Prev
+              </button>
+              <span>Page {{adminScorePage}} / {{adminScoreTotalPages}}</span>
+              <button (click)="adminScorePage = adminScorePage + 1; loadAdminScores()" 
+                      [disabled]="adminScorePage >= adminScoreTotalPages">
+                Next ▶
+              </button>
+            </div>
+          </div>
+          
+          <!-- Announcement Tab -->
+          <div *ngIf="adminTab === 'announce'" class="admin-announce">
+            <h3>📢 Global Announcement</h3>
+            <textarea 
+              [(ngModel)]="announcementText" 
+              placeholder="Enter announcement message..."
+              class="announce-textarea"></textarea>
+            <div class="announce-buttons">
+              <button (click)="setAnnouncement()" class="set-announce-btn">📢 SET ANNOUNCEMENT</button>
+              <button (click)="clearAnnouncement()" class="clear-announce-btn">❌ CLEAR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="instructions" *ngIf="!gameStarted && !gameOver">
         <h1>🎮 BULLET HELL SURVIVOR 🎮</h1>
         <div class="game-description">
@@ -500,7 +650,10 @@ interface ColorOption {
         </div>
         
         <div class="user-info" *ngIf="isLoggedIn">
-          <p>👤 Bejelentkezve: <strong>{{ currentUsername }}</strong></p>
+          <p>
+            👤 Bejelentkezve: <strong>{{ currentUsername }}</strong>
+            <span class="admin-badge" *ngIf="authService.isAdmin">⭐ ADMIN</span>
+          </p>
           <button (click)="handleLogout()" class="logout-btn">Kijelentkezés</button>
         </div>
         
@@ -1527,6 +1680,20 @@ interface ColorOption {
       text-shadow: 0 0 5px #00ffff;
     }
     
+    .admin-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+      font-size: 0.75em;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-left: 10px;
+      text-shadow: none;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
     .logout-btn {
       background: linear-gradient(135deg, #ff6600, #ff0000);
       color: white;
@@ -1833,7 +2000,7 @@ interface ColorOption {
     
     .support-btn {
       position: absolute;
-      top: 200px;
+      top: 260px;
       right: 20px;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       color: #000;
@@ -1858,7 +2025,7 @@ interface ColorOption {
     
     .pause-btn {
       position: absolute;
-      top: 200px;
+      top: 260px;
       right: 20px;
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
@@ -2369,6 +2536,334 @@ interface ColorOption {
       box-shadow: none;
     }
     
+    /* Admin Panel */
+    .admin-toggle {
+      position: absolute;
+      top: 200px;
+      right: 20px;
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(255, 102, 0, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      z-index: 100;
+    }
+    
+    .admin-toggle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 102, 0, 0.8);
+    }
+    
+    .admin-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 10, 10, 0.98);
+      border: 4px solid #ff6600;
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(255, 102, 0, 0.5);
+      color: white;
+      width: 800px;
+      max-width: 90vw;
+      max-height: 80vh;
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 30px;
+      border-bottom: 2px solid #ff6600;
+      background: rgba(20, 10, 10, 0.98);
+    }
+    
+    .admin-header h2 {
+      color: #ff6600;
+      margin: 0;
+      font-size: 2em;
+      text-shadow: 0 0 15px #ff6600;
+    }
+    
+    .admin-tabs {
+      display: flex;
+      gap: 10px;
+      padding: 15px 30px;
+      border-bottom: 2px solid rgba(255, 102, 0, 0.3);
+      background: rgba(0, 0, 0, 0.3);
+    }
+    
+    .admin-tab-btn {
+      flex: 1;
+      padding: 10px 15px;
+      font-size: 0.9em;
+      font-weight: bold;
+      border: 2px solid #ff6600;
+      background: rgba(0, 0, 0, 0.5);
+      color: #888;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .admin-tab-btn:hover {
+      background: rgba(255, 102, 0, 0.1);
+      color: #ff6600;
+    }
+    
+    .admin-tab-btn.active {
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+    }
+    
+    .admin-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 30px;
+    }
+    
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-card {
+      background: rgba(255, 102, 0, 0.1);
+      border: 2px solid #ff6600;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
+    }
+    
+    .stat-icon {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700;
+    }
+    
+    .stat-label {
+      font-size: 0.9em;
+      color: #aaa;
+      margin-top: 5px;
+    }
+    
+    .admin-content h3 {
+      color: #ff6600;
+      margin: 20px 0 15px 0;
+      text-shadow: 0 0 10px #ff6600;
+    }
+    
+    .suspicious-list, .user-list, .score-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .suspicious-item, .user-item, .score-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 102, 0, 0.3);
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    
+    .suspicious-item:hover, .user-item:hover, .score-item:hover {
+      background: rgba(255, 102, 0, 0.1);
+      border-color: #ff6600;
+    }
+    
+    .user-info-admin {
+      flex: 1;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    
+    .user-id {
+      color: #888;
+      font-weight: bold;
+      min-width: 40px;
+    }
+    
+    .user-name {
+      color: #00ffff;
+      font-weight: bold;
+      min-width: 120px;
+    }
+    
+    .user-email {
+      color: #aaa;
+      flex: 1;
+    }
+    
+    .user-scores, .user-best {
+      color: #ffd700;
+      font-size: 0.9em;
+    }
+    
+    .delete-btn {
+      background: linear-gradient(135deg, #ff0000, #cc0000);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .delete-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+    }
+    
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+    }
+    
+    .pagination button {
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .announce-textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 15px;
+      font-size: 1em;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #ff6600;
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      resize: vertical;
+      outline: none;
+    }
+    
+    .announce-textarea:focus {
+      border-color: #ff8800;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+    }
+    
+    .announce-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .set-announce-btn, .clear-announce-btn {
+      flex: 1;
+      padding: 15px 30px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .set-announce-btn {
+      background: linear-gradient(135deg, #00ff00, #00cc00);
+      color: #000;
+      box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+    }
+    
+    .set-announce-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 255, 0, 0.6);
+    }
+    
+    .clear-announce-btn {
+      background: linear-gradient(135deg, #888, #555);
+      color: #fff;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    }
+    
+    .clear-announce-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    }
+    
+    .announcement-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #ff6600, #ff0000);
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      z-index: 999;
+      box-shadow: 0 5px 20px rgba(255, 102, 0, 0.8);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .announce-icon {
+      font-size: 1.5em;
+      margin: 0 10px;
+      animation: bounce 1s ease-in-out infinite alternate;
+    }
+    
+    .announce-text {
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    
     /* Responsive Media Queries */
     @media (max-width: 1300px) {
       .instructions {
@@ -2610,7 +3105,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   private animationId: number = 0;
   
   // Auth service
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   
   // Expose Math to template
   Math = Math;
@@ -2839,6 +3334,24 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   showSkills: boolean = false;
   skillPoints: number = 0;
   
+  // Admin properties
+  showAdminPanel: boolean = false;
+  adminTab: 'stats' | 'users' | 'scores' | 'announce' = 'stats';
+  adminStats: any = {
+    totalUsers: 0,
+    totalScores: 0,
+    topScore: 0,
+    totalKills: 0,
+    maxWave: 0,
+    suspiciousScores: []
+  };
+  adminUsers: any[] = [];
+  adminScores: any[] = [];
+  adminScorePage: number = 1;
+  adminScoreTotalPages: number = 1;
+  announcementText: string = '';
+  globalAnnouncement: string = '';
+  
   get unlockedCount(): number {
     return this.achievements.filter(a => a.unlocked).length;
   }
@@ -2904,6 +3417,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadSkills();
     this.loadStats();
     this.loadAdSense();
+    this.loadAnnouncement();
     this.render();
   }
   
@@ -5411,6 +5925,179 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.authEmail = '';
     this.authError = '';
     alert('👋 Kijelentkeztél!');
+  }
+  
+  // Admin methods
+  toggleAdminPanel() {
+    this.showAdminPanel = !this.showAdminPanel;
+    if (this.showAdminPanel) {
+      this.loadAdminStats();
+      this.loadAnnouncement();
+    }
+  }
+  
+  loadAdminStats() {
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getStats', token })
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.adminStats = data;
+    })
+    .catch(err => console.error('Failed to load admin stats:', err));
+  }
+  
+  loadAdminUsers() {
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getUsers', token })
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.adminUsers = data.users;
+    })
+    .catch(err => console.error('Failed to load users:', err));
+  }
+  
+  loadAdminScores() {
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'getAllScores', 
+        token,
+        page: this.adminScorePage,
+        limit: 50
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.adminScores = data.scores;
+      this.adminScoreTotalPages = data.totalPages;
+    })
+    .catch(err => console.error('Failed to load scores:', err));
+  }
+  
+  deleteUser(userId: number) {
+    if (!confirm('Biztosan törölni akarod ezt a felhasználót?')) return;
+    
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteUser', token, userId })
+    })
+    .then(res => res.json())
+    .then(() => {
+      alert('✅ Felhasználó törölve!');
+      this.loadAdminUsers();
+    })
+    .catch(err => {
+      console.error('Failed to delete user:', err);
+      alert('❌ Hiba a törlés során!');
+    });
+  }
+  
+  deleteScore(scoreId: number) {
+    if (!confirm('Biztosan törölni akarod ezt a score-t?')) return;
+    
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteScore', token, scoreId })
+    })
+    .then(res => res.json())
+    .then(() => {
+      alert('✅ Score törölve!');
+      if (this.adminTab === 'stats') {
+        this.loadAdminStats();
+      } else {
+        this.loadAdminScores();
+      }
+      this.loadLeaderboard(); // Refresh main leaderboard too
+    })
+    .catch(err => {
+      console.error('Failed to delete score:', err);
+      alert('❌ Hiba a törlés során!');
+    });
+  }
+  
+  setAnnouncement() {
+    if (!this.announcementText.trim()) {
+      alert('⚠️ Add meg az üzenetet!');
+      return;
+    }
+    
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'setAnnouncement', 
+        token,
+        message: this.announcementText 
+      })
+    })
+    .then(res => res.json())
+    .then(() => {
+      alert('✅ Üzenet beállítva!');
+      this.globalAnnouncement = this.announcementText;
+    })
+    .catch(err => {
+      console.error('Failed to set announcement:', err);
+      alert('❌ Hiba az üzenet beállításakor!');
+    });
+  }
+  
+  clearAnnouncement() {
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clearAnnouncement', token })
+    })
+    .then(res => res.json())
+    .then(() => {
+      alert('✅ Üzenet törölve!');
+      this.announcementText = '';
+      this.globalAnnouncement = '';
+    })
+    .catch(err => {
+      console.error('Failed to clear announcement:', err);
+      alert('❌ Hiba az üzenet törlésekor!');
+    });
+  }
+  
+  loadAnnouncement() {
+    fetch('/.netlify/functions/announcement')
+    .then(res => res.json())
+    .then(data => {
+      if (data.announcement) {
+        this.globalAnnouncement = data.announcement;
+      }
+    })
+    .catch(err => console.error('Failed to load announcement:', err));
   }
   
   ngOnDestroy() {
