@@ -796,13 +796,20 @@ interface ColorOption {
         </div>
         
         <div class="controls">
-          <h2>Controls:</h2>
-          <p><strong>W A S D</strong> or <strong>Arrow Keys</strong> - Move</p>
-          <p><strong>SPACE</strong> - Shoot</p>
-          <p><strong>Mouse</strong> - Aim direction</p>
-          <p><strong>Q</strong> - Ultimate (15s cooldown)</p>
-          <p><strong>Shift</strong> - Dash</p>
-          <p><strong>E</strong> - Slow Motion (10+ kill streak)</p>
+          <h2 *ngIf="language === 'hu'">Irányítás:</h2>
+          <h2 *ngIf="language === 'en'">Controls:</h2>
+          <p *ngIf="language === 'hu'"><strong>W A S D</strong> vagy <strong>Nyílbillentyűk</strong> - Mozgás</p>
+          <p *ngIf="language === 'en'"><strong>W A S D</strong> or <strong>Arrow Keys</strong> - Move</p>
+          <p *ngIf="language === 'hu'"><strong>SPACE</strong> - Lővés</p>
+          <p *ngIf="language === 'en'"><strong>SPACE</strong> - Shoot</p>
+          <p *ngIf="language === 'hu'"><strong>Egér</strong> - Célzás iránya</p>
+          <p *ngIf="language === 'en'"><strong>Mouse</strong> - Aim direction</p>
+          <p *ngIf="language === 'hu'"><strong>Q</strong> - Ultimate (15s cooldown)</p>
+          <p *ngIf="language === 'en'"><strong>Q</strong> - Ultimate (15s cooldown)</p>
+          <p *ngIf="language === 'hu'"><strong>Shift</strong> - Dash</p>
+          <p *ngIf="language === 'en'"><strong>Shift</strong> - Dash</p>
+          <p *ngIf="language === 'hu'"><strong>E</strong> - Slow Motion (10+ kill streak)</p>
+          <p *ngIf="language === 'en'"><strong>E</strong> - Slow Motion (10+ kill streak)</p>
         </div>
         <div class="gameplay-info">
           <h2 *ngIf="language === 'hu'">Gameplay:</h2>
@@ -821,12 +828,18 @@ interface ColorOption {
           <p *ngIf="language === 'en'">• Difficulty increases each wave (+20% HP, +8% speed)</p>
         </div>
         <div class="enemy-types">
-          <h2>Enemy Types:</h2>
-          <p><span class="enemy-basic">█</span> Basic - Slow, weak</p>
-          <p><span class="enemy-fast">█</span> Fast - Quick, low HP</p>
-          <p><span class="enemy-tank">█</span> Tank - Slow, high HP</p>
-          <p><span class="enemy-shooter">█</span> Shooter - Shoots at you!</p>
-          <p><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
+          <h2 *ngIf="language === 'hu'">Ellenség Típusok:</h2>
+          <h2 *ngIf="language === 'en'">Enemy Types:</h2>
+          <p *ngIf="language === 'hu'"><span class="enemy-basic">█</span> Alap - Lassú, gyenge</p>
+          <p *ngIf="language === 'en'"><span class="enemy-basic">█</span> Basic - Slow, weak</p>
+          <p *ngIf="language === 'hu'"><span class="enemy-fast">█</span> Gyors - Vilámgyors, alacsony élet</p>
+          <p *ngIf="language === 'en'"><span class="enemy-fast">█</span> Fast - Quick, low HP</p>
+          <p *ngIf="language === 'hu'"><span class="enemy-tank">█</span> Tank - Lassú, magas élet</p>
+          <p *ngIf="language === 'en'"><span class="enemy-tank">█</span> Tank - Slow, high HP</p>
+          <p *ngIf="language === 'hu'"><span class="enemy-shooter">█</span> Lővöldöző - Lő rád!</p>
+          <p *ngIf="language === 'en'"><span class="enemy-shooter">█</span> Shooter - Shoots at you!</p>
+          <p *ngIf="language === 'hu'"><span class="enemy-boss">█</span> Boss - Hatalmas élet, mintazás lövések</p>
+          <p *ngIf="language === 'en'"><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
         </div>
         
         <div class="weapon-selection-menu">
