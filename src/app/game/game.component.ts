@@ -351,7 +351,7 @@ interface ColorOption {
             [class.current-player]="entry.name.toLowerCase() === currentUsername.toLowerCase()">
             <span class="rank">{{ i + 1 }}</span>
             <span class="name">
-              {{ entry.name }}
+              {{ entry.name.length > 15 ? (entry.name.substring(0, 15) + '...') : entry.name }}
               <span class="you-badge" *ngIf="entry.name.toLowerCase() === currentUsername.toLowerCase()"> (YOU)</span>
             </span>
             <span class="score-col">{{ entry.score }}</span>
@@ -1979,7 +1979,7 @@ interface ColorOption {
     
     .leaderboard {
       position: absolute;
-      top: 50%;
+      top: 45%;
       left: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(135deg, rgba(15, 15, 35, 0.98), rgba(25, 25, 50, 0.98));
@@ -2068,7 +2068,7 @@ interface ColorOption {
     
     .leaderboard-entry {
       display: grid;
-      grid-template-columns: 50px 1fr 100px 80px 80px 60px;
+      grid-template-columns: 60px 200px 100px 100px 100px 60px;
       gap: 10px;
       padding: 14px;
       background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 40, 0.4));
@@ -2134,6 +2134,9 @@ interface ColorOption {
     .name {
       font-size: 1.1em;
       color: #00ffff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     
     .score-col, .wave-col, .kills-col {
