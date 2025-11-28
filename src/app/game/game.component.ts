@@ -421,19 +421,27 @@ interface ColorOption {
         ⚙️ ADMIN
       </button>
       
-      <a 
-        href="https://ko-fi.com/szeretemakiflit" 
-        target="_blank"
-        *ngIf="gameStarted"
-        class="support-btn">
-        ☕ SUPPORT ME
-      </a>
+      <div class="top-right-buttons" *ngIf="gameStarted">
+        <a 
+          href="https://ko-fi.com/szeretemakiflit" 
+          target="_blank"
+          class="support-btn">
+          ☕ SUPPORT ME
+        </a>
+        
+        <button 
+          *ngIf="!gameOver" 
+          (click)="togglePause()" 
+          class="pause-btn">
+          {{ isPaused ? '▶️' : '⏸️' }}
+        </button>
+      </div>
       
       <button 
-        *ngIf="gameStarted && !gameOver" 
-        (click)="togglePause()" 
-        class="pause-btn">
-        {{ isPaused ? '▶️' : '⏸️' }}
+        *ngIf="authService.isAdmin && !gameStarted"
+        (click)="toggleAdminPanel()"
+        class="admin-btn-bottom">
+        ⚙️ ADMIN
       </button>
       
       <div class="pause-overlay" *ngIf="isPaused && !gameOver">
@@ -2376,10 +2384,16 @@ interface ColorOption {
       box-shadow: 0 8px 25px rgba(255, 0, 0, 0.8);
     }
     
-    .support-btn {
+    .top-right-buttons {
       position: absolute;
       top: 260px;
-      right: 120px;
+      right: 20px;
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+    
+    .support-btn {
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       color: #000;
       border: none;
@@ -2393,7 +2407,6 @@ interface ColorOption {
       font-family: 'Courier New', monospace;
       text-decoration: none;
       display: inline-block;
-      z-index: 100;
     }
     
     .support-btn:hover {
@@ -2402,9 +2415,6 @@ interface ColorOption {
     }
     
     .pause-btn {
-      position: absolute;
-      top: 260px;
-      right: 20px;
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
       border: none;
@@ -2415,12 +2425,34 @@ interface ColorOption {
       cursor: pointer;
       box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
       transition: all 0.3s;
-      z-index: 100;
     }
     
     .pause-btn:hover {
       transform: scale(1.1);
       box-shadow: 0 8px 25px rgba(102, 126, 234, 0.8);
+    }
+    
+    .admin-btn-bottom {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+      color: white;
+      border: 2px solid #ff0000;
+      padding: 15px 30px;
+      font-size: 1.2em;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(255, 0, 0, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      z-index: 100;
+    }
+    
+    .admin-btn-bottom:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 30px rgba(255, 0, 0, 0.8);
     }
     
     .pause-overlay {
