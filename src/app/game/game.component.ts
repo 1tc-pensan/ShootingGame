@@ -1982,14 +1982,14 @@ interface ColorOption {
       top: 45%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, rgba(15, 15, 35, 0.98), rgba(25, 25, 50, 0.98));
-      padding: 35px;
+      background: rgba(10, 10, 30, 0.98);
+      padding: 30px;
       border: 4px solid #ffd700;
-      border-radius: 25px;
-      box-shadow: 0 0 60px rgba(255, 215, 0, 0.6), inset 0 2px 30px rgba(255, 215, 0, 0.05);
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
       color: white;
-      width: 650px;
-      max-height: 80vh;
+      width: 750px;
+      max-height: 85vh;
       overflow-y: auto;
       z-index: 1000;
     }
