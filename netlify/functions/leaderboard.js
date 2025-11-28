@@ -26,7 +26,7 @@ exports.handler = async (event) => {
       
       if (type === '24h') {
         scores = await sql`
-          SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
           FROM scores s
           JOIN users u ON s.user_id = u.id
           WHERE s.created_at >= NOW() - INTERVAL '1 day'
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
         `;
       } else {
         scores = await sql`
-          SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
           FROM scores s
           JOIN users u ON s.user_id = u.id
           ORDER BY s.score DESC
@@ -109,7 +109,7 @@ exports.handler = async (event) => {
 
       // Get updated leaderboard
       const leaderboard = await sql`
-        SELECT u.username as name, s.score, s.wave, s.kills, s.created_at as date
+        SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
         FROM scores s
         JOIN users u ON s.user_id = u.id
         ORDER BY s.score DESC 

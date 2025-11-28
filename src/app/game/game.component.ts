@@ -60,6 +60,7 @@ interface Particle {
 }
 
 interface LeaderboardEntry {
+  id?: number;
   name: string;
   score: number;
   wave: number;
