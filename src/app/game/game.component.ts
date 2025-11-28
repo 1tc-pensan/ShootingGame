@@ -913,10 +913,10 @@ interface ColorOption {
     
     .ultimate-label {
       color: #ffaa00;
-      font-size: 16px;
+      font-size: 13px;
       font-weight: bold;
       text-shadow: 0 0 10px #ffaa00;
-      min-width: 120px;
+      min-width: 100px;
     }
     
     .ultimate-bg {
@@ -944,9 +944,9 @@ interface ColorOption {
     
     .ultimate-key {
       color: #888;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: bold;
-      min-width: 150px;
+      min-width: 120px;
       text-align: right;
     }
     
@@ -964,7 +964,7 @@ interface ColorOption {
     
     .health-label {
       color: #00ff00;
-      font-size: 18px;
+      font-size: 15px;
       font-weight: bold;
       text-shadow: 0 0 10px #00ff00;
     }
@@ -1231,8 +1231,8 @@ interface ColorOption {
       background: linear-gradient(135deg, #ff0000, #ff6600);
       color: white;
       border: none;
-      padding: 20px 50px;
-      font-size: 1.5em;
+      padding: 15px 40px;
+      font-size: 1.2em;
       font-weight: bold;
       border-radius: 10px;
       cursor: pointer;
@@ -1255,10 +1255,10 @@ interface ColorOption {
     }
     
     .weapon-selector-gameover h3 {
-      margin: 0 0 15px 0;
+      margin: 0 0 12px 0;
       color: #00ff00;
       text-shadow: 0 0 10px #00ff00;
-      font-size: 1.3em;
+      font-size: 1.1em;
     }
     
     .weapon-selector-gameover .weapon-options {
@@ -1271,8 +1271,8 @@ interface ColorOption {
     .weapon-selector-gameover .weapon-option {
       background: rgba(20, 20, 60, 0.8);
       border: 2px solid #555;
-      border-radius: 10px;
-      padding: 15px;
+      border-radius: 8px;
+      padding: 10px;
       cursor: pointer;
       transition: all 0.3s;
       text-align: center;
@@ -1291,12 +1291,12 @@ interface ColorOption {
     }
     
     .weapon-selector-gameover .weapon-icon {
-      font-size: 2.5em;
-      margin-bottom: 8px;
+      font-size: 2em;
+      margin-bottom: 5px;
     }
     
     .weapon-selector-gameover .weapon-name {
-      font-size: 0.9em;
+      font-size: 0.8em;
       font-weight: bold;
       color: white;
     }
