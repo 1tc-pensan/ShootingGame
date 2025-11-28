@@ -393,56 +393,50 @@ interface ColorOption {
         </div>
       </div>
       
-      <button 
-        *ngIf="!showLeaderboard && gameStarted" 
-        (click)="toggleLeaderboard()" 
-        class="leaderboard-toggle">
-        🏆 LEADERBOARD
-      </button>
-      
-      <button 
-        *ngIf="!showAchievements && gameStarted" 
-        (click)="toggleAchievements()" 
-        class="achievements-toggle">
-        🎖️ ACHIEVEMENTS
-      </button>
-      
-      <button 
-        *ngIf="!showSkills && gameStarted" 
-        (click)="toggleSkills()" 
-        class="skills-toggle">
-        🌟 SKILLS
-      </button>
-      
-      <button 
-        *ngIf="!showAdminPanel && authService.isAdmin" 
-        (click)="toggleAdminPanel()" 
-        class="admin-toggle">
-        ⚙️ ADMIN
-      </button>
-      
-      <div class="top-right-buttons" *ngIf="gameStarted">
+      <div class="side-menu-buttons">
+        <button 
+          *ngIf="!showLeaderboard && gameStarted && !gameOver" 
+          (click)="toggleLeaderboard()" 
+          class="side-menu-btn leaderboard-btn">
+          🏆 LEADERBOARD
+        </button>
+        
+        <button 
+          *ngIf="!showAchievements && gameStarted && !gameOver" 
+          (click)="toggleAchievements()" 
+          class="side-menu-btn achievements-btn">
+          🎖️ ACHIEVEMENTS
+        </button>
+        
+        <button 
+          *ngIf="!showSkills && gameStarted && !gameOver" 
+          (click)="toggleSkills()" 
+          class="side-menu-btn skills-btn">
+          🌟 SKILLS
+        </button>
+        
         <a 
+          *ngIf="gameStarted && !gameOver"
           href="https://ko-fi.com/szeretemakiflit" 
           target="_blank"
-          class="support-btn">
+          class="side-menu-btn support-btn">
           ☕ SUPPORT ME
         </a>
         
         <button 
-          *ngIf="!gameOver" 
+          *ngIf="gameStarted && !gameOver"
           (click)="togglePause()" 
-          class="pause-btn">
-          {{ isPaused ? '▶️' : '⏸️' }}
+          class="side-menu-btn pause-btn">
+          {{ isPaused ? '▶️ RESUME' : '⏸️ PAUSE' }}
+        </button>
+        
+        <button 
+          *ngIf="authService.isAdmin && gameStarted && !gameOver"
+          (click)="toggleAdminPanel()"
+          class="side-menu-btn admin-btn">
+          ⚙️ ADMIN
         </button>
       </div>
-      
-      <button 
-        *ngIf="authService.isAdmin && !gameStarted"
-        (click)="toggleAdminPanel()"
-        class="admin-btn-bottom">
-        ⚙️ ADMIN
-      </button>
       
       <div class="pause-overlay" *ngIf="isPaused && !gameOver">
         <div class="pause-menu">
@@ -2290,6 +2284,96 @@ interface ColorOption {
     .cancel-btn:hover {
       transform: scale(1.05);
       box-shadow: 0 6px 20px rgba(255, 0, 0, 0.6);
+    }
+    
+    .side-menu-buttons {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 100;
+    }
+    
+    .side-menu-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 200px;
+    }
+    
+    .side-menu-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.8);
+    }
+    
+    .leaderboard-btn {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+      box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+    }
+    
+    .leaderboard-btn:hover {
+      box-shadow: 0 8px 25px rgba(255, 215, 0, 0.8);
+    }
+    
+    .achievements-btn {
+      background: linear-gradient(135deg, #ff00ff, #aa00ff);
+      box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
+    }
+    
+    .achievements-btn:hover {
+      box-shadow: 0 8px 25px rgba(255, 0, 255, 0.8);
+    }
+    
+    .skills-btn {
+      background: linear-gradient(135deg, #00aaff, #0066ff);
+      box-shadow: 0 5px 15px rgba(0, 170, 255, 0.5);
+    }
+    
+    .skills-btn:hover {
+      box-shadow: 0 8px 25px rgba(0, 170, 255, 0.8);
+    }
+    
+    .support-btn {
+      background: linear-gradient(135deg, #00c9ff, #92fe9d);
+      color: #000;
+      box-shadow: 0 5px 15px rgba(0, 201, 255, 0.5);
+    }
+    
+    .support-btn:hover {
+      box-shadow: 0 8px 25px rgba(0, 201, 255, 0.8);
+    }
+    
+    .pause-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+    }
+    
+    .pause-btn:hover {
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.8);
+    }
+    
+    .admin-btn {
+      background: linear-gradient(135deg, #ff0000, #aa0000);
+      box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
+    }
+    
+    .admin-btn:hover {
+      box-shadow: 0 8px 25px rgba(255, 0, 0, 0.8);
     }
     
     .leaderboard-toggle {
