@@ -1982,13 +1982,13 @@ interface ColorOption {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(10, 10, 30, 0.98);
-      padding: 30px;
+      background: linear-gradient(135deg, rgba(15, 15, 35, 0.98), rgba(25, 25, 50, 0.98));
+      padding: 35px;
       border: 4px solid #ffd700;
-      border-radius: 20px;
-      box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+      border-radius: 25px;
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.6), inset 0 2px 30px rgba(255, 215, 0, 0.05);
       color: white;
-      width: 600px;
+      width: 650px;
       max-height: 80vh;
       overflow-y: auto;
       z-index: 1000;
@@ -2070,23 +2070,27 @@ interface ColorOption {
       display: grid;
       grid-template-columns: 50px 1fr 100px 80px 80px 60px;
       gap: 10px;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 5px;
+      padding: 14px;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 40, 0.4));
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 8px;
       align-items: center;
       transition: all 0.3s;
     }
     
     .leaderboard-entry:not(.header-entry):hover {
-      background: rgba(0, 255, 0, 0.1);
+      background: linear-gradient(135deg, rgba(0, 255, 0, 0.15), rgba(0, 200, 0, 0.1));
       transform: translateX(5px);
+      border-color: rgba(0, 255, 0, 0.4);
+      box-shadow: 0 4px 15px rgba(0, 255, 0, 0.2);
     }
     
     .header-entry {
-      background: rgba(255, 215, 0, 0.2);
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 170, 0, 0.2));
       font-weight: bold;
       color: #ffd700;
-      border: 1px solid #ffd700;
+      border: 2px solid #ffd700;
+      box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
     }
     
     .leaderboard-entry.highlight {
@@ -2117,10 +2121,14 @@ interface ColorOption {
     }
     
     .rank {
-      font-size: 1.2em;
+      font-size: 1.3em;
       font-weight: bold;
-      color: #ffd700;
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       text-align: center;
+      filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
     }
     
     .name {
