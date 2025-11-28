@@ -1523,25 +1523,50 @@ interface ColorOption {
     }
     
     .weapon-card {
-      background: rgba(0, 0, 0, 0.8);
-      border: 2px solid #666;
-      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 25, 0.9));
+      border: 2px solid #00aaff;
+      border-radius: 15px;
       padding: 20px;
       cursor: pointer;
       transition: all 0.3s ease;
       text-align: center;
+      box-shadow: 0 5px 15px rgba(0, 170, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .weapon-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(0, 170, 255, 0.1) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .weapon-card:hover::before {
+      opacity: 1;
     }
     
     .weapon-card:hover {
       border-color: #00ffff;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+      box-shadow: 0 8px 25px rgba(0, 255, 255, 0.4), 0 0 30px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
       transform: translateY(-5px);
+      background: linear-gradient(135deg, rgba(25, 25, 50, 0.95), rgba(15, 15, 35, 0.95));
     }
     
     .weapon-card.selected {
       border-color: #00ff00;
-      background: rgba(0, 255, 0, 0.1);
-      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+      background: linear-gradient(135deg, rgba(0, 40, 0, 0.9), rgba(0, 25, 0, 0.9));
+      box-shadow: 0 10px 35px rgba(0, 255, 0, 0.5), 0 0 40px rgba(0, 255, 0, 0.6), inset 0 1px 0 rgba(0, 255, 0, 0.3);
+    }
+    
+    .weapon-card.selected::before {
+      background: radial-gradient(circle, rgba(0, 255, 0, 0.15) 0%, transparent 70%);
+      opacity: 1;
     }
     
     .weapon-name {
