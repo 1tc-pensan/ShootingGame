@@ -584,33 +584,6 @@ interface ColorOption {
             </div>
           </div>
           
-          <!-- Scores Tab -->
-          <div *ngIf="adminTab === 'scores'" class="admin-scores">
-            <div class="score-list">
-              <div *ngIf="adminScores.length === 0" class="empty-message">
-                📊 No scores found
-              </div>
-              <div *ngFor="let score of adminScores" class="score-item">
-                <span>{{score.username}}</span>
-                <span>{{score.score}} pts</span>
-                <span>W{{score.wave}}</span>
-                <span>{{score.kills}} kills</span>
-                <button (click)="deleteScore(score.id)" class="delete-btn">🗑️</button>
-              </div>
-            </div>
-            <div class="pagination">
-              <button (click)="adminScorePage = adminScorePage - 1; loadAdminScores()" 
-                      [disabled]="adminScorePage === 1">
-                ◀ Prev
-              </button>
-              <span>Page {{adminScorePage}} / {{adminScoreTotalPages || 1}}</span>
-              <button (click)="adminScorePage = adminScorePage + 1; loadAdminScores()" 
-                      [disabled]="adminScorePage >= adminScoreTotalPages">
-                Next ▶
-              </button>
-            </div>
-          </div>
-          
           <!-- Announcement Tab -->
           <div *ngIf="adminTab === 'announce'" class="admin-announce">
             <h3>📢 Global Announcement</h3>
@@ -3497,7 +3470,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   // Admin properties
   showAdminPanel: boolean = false;
-  adminTab: 'stats' | 'users' | 'scores' | 'announce' = 'stats';
+  adminTab: 'stats' | 'users' | 'announce' = 'stats';
   adminStats: any = {
     totalUsers: 0,
     totalScores: 0,
@@ -3507,9 +3480,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     suspiciousScores: []
   };
   adminUsers: any[] = [];
-  adminScores: any[] = [];
-  adminScorePage: number = 1;
-  adminScoreTotalPages: number = 1;
   announcementText: string = '';
   globalAnnouncement: string = '';
   
@@ -6131,28 +6101,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.adminUsers = data.users;
     })
     .catch(err => console.error('Failed to load users:', err));
-  }
-  
-  loadAdminScores() {
-    const token = this.authService.getToken();
-    if (!token) return;
-    
-    fetch('/.netlify/functions/admin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'getAllScores', 
-        token,
-        page: this.adminScorePage,
-        limit: 50
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      this.adminScores = data.scores;
-      this.adminScoreTotalPages = data.totalPages;
-    })
-    .catch(err => console.error('Failed to load scores:', err));
   }
   
   deleteUser(userId: number) {
