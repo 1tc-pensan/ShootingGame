@@ -5731,6 +5731,222 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         icon: '✨',
         unlocked: false,
         condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'sharpshooter',
+        title: 'Sharpshooter',
+        description: 'Get 10 critical hits in one game',
+        icon: '🎯',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'dodge_master',
+        title: 'Dodge Master',
+        description: 'Dodge 50 bullets in one game',
+        icon: '🌀',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'tank',
+        title: 'Tank',
+        description: 'Survive 100 hits in one game',
+        icon: '🛡️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'glass_cannon',
+        title: 'Glass Cannon',
+        description: 'Reach wave 10 with less than 50 health',
+        icon: '💔',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'pacifist',
+        title: 'Pacifist... NOT!',
+        description: 'Kill 20 enemies in one wave',
+        icon: '😈',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'collector',
+        title: 'Collector',
+        description: 'Pick up 50 power-ups',
+        icon: '🎁',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'ultimate_master',
+        title: 'Ultimate Master',
+        description: 'Use ultimate ability 20 times',
+        icon: '🌟',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'dash_expert',
+        title: 'Dash Expert',
+        description: 'Use dash 100 times',
+        icon: '💨',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'slow_mo_lover',
+        title: 'Slow-Mo Lover',
+        description: 'Use slow motion 30 times',
+        icon: '⏱️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'millionaire',
+        title: 'Millionaire',
+        description: 'Score 1,000,000 points',
+        icon: '💵',
+        unlocked: false,
+        condition: (stats) => stats.score >= 1000000
+      },
+      {
+        id: 'headhunter',
+        title: 'Headhunter',
+        description: 'Kill 100 Tank enemies',
+        icon: '🎖️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'speed_killer',
+        title: 'Speed Killer',
+        description: 'Kill 100 Fast enemies',
+        icon: '⚡',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'sniper',
+        title: 'Sniper',
+        description: 'Kill 50 Shooter enemies',
+        icon: '🔭',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'ninja',
+        title: 'Ninja',
+        description: 'Complete wave 15 without using slow motion',
+        icon: '🥷',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'rambo',
+        title: 'Rambo',
+        description: 'Kill 30 enemies without reloading',
+        icon: '🔫',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'perfectionist',
+        title: 'Perfectionist',
+        description: 'Get 95% accuracy in one game',
+        icon: '💯',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'sprayer',
+        title: 'Spray and Pray',
+        description: 'Shoot 1000 bullets in one game',
+        icon: '🌊',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'explosion_lover',
+        title: 'Explosion Lover',
+        description: 'Kill 50 enemies with explosive bullets',
+        icon: '💥',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'pierce_master',
+        title: 'Pierce Master',
+        description: 'Kill 2 enemies with one bullet 25 times',
+        icon: '🏹',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'skill_master',
+        title: 'Skill Master',
+        description: 'Max out any skill',
+        icon: '🎓',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'all_rounder',
+        title: 'All-Rounder',
+        description: 'Unlock all skills',
+        icon: '🌈',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'arsenal',
+        title: 'Arsenal',
+        description: 'Try all 6 weapons in one game',
+        icon: '🗡️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'one_shot',
+        title: 'One Shot, One Kill',
+        description: 'Kill a Tank enemy with one shot',
+        icon: '🎯',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'close_call',
+        title: 'Close Call',
+        description: 'Survive with exactly 1 health',
+        icon: '💀',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'speedrunner',
+        title: 'Speedrunner',
+        description: 'Reach wave 10 in under 5 minutes',
+        icon: '⏰',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'marathon',
+        title: 'Marathon',
+        description: 'Play for 30 minutes in one game',
+        icon: '🏃',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'come_back',
+        title: 'Comeback King',
+        description: 'Win with less than 10% health remaining',
+        icon: '👑',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
       }
     ];
   }
