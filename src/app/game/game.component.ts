@@ -2916,6 +2916,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       moved = true;
     }
     
+    // Extra safety: clamp player position to stay within canvas bounds
+    this.player.x = Math.max(0, Math.min(this.canvasWidth - this.player.width, this.player.x));
+    this.player.y = Math.max(0, Math.min(this.canvasHeight - this.player.height, this.player.y));
+    
     // Add player trail particles when moving
     if (moved && Math.random() < 0.5) {
       this.particles.push({
