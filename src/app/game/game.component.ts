@@ -269,36 +269,51 @@ interface ColorOption {
         </div>
         
         <div class="final-stats">
-          <p>Final Score: <strong>{{ score }}</strong></p>
-          <p>Wave Reached: <strong>{{ wave }}</strong></p>
-          <p>Enemies Killed: <strong>{{ kills }}</strong></p>
-          <p *ngIf="isLoggedIn">Player: <strong>{{ currentUsername }}</strong></p>
+          <p *ngIf="language === 'hu'">Végső Pontszám: <strong>{{ score }}</strong></p>
+          <p *ngIf="language === 'en'">Final Score: <strong>{{ score }}</strong></p>
+          <p *ngIf="language === 'hu'">Elért Hullám: <strong>{{ wave }}</strong></p>
+          <p *ngIf="language === 'en'">Wave Reached: <strong>{{ wave }}</strong></p>
+          <p *ngIf="language === 'hu'">Megjölt Ellenségek: <strong>{{ kills }}</strong></p>
+          <p *ngIf="language === 'en'">Enemies Killed: <strong>{{ kills }}</strong></p>
+          <p *ngIf="isLoggedIn && language === 'hu'">Játékos: <strong>{{ currentUsername }}</strong></p>
+          <p *ngIf="isLoggedIn && language === 'en'">Player: <strong>{{ currentUsername }}</strong></p>
         </div>
         <div class="submit-score-section" *ngIf="!playerNameSubmitted">
-          <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn">
+          <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn && language === 'hu'">
+            💾 PONTSZÁM MENTÉSE
+          </button>
+          <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn && language === 'en'">
             💾 SAVE SCORE
           </button>
-          <p class="auth-warning" *ngIf="!isLoggedIn">
+          <p class="auth-warning" *ngIf="!isLoggedIn && language === 'hu'">
             ⚠️ Bejelentkezés szükséges a pontszám mentéséhez!
           </p>
+          <p class="auth-warning" *ngIf="!isLoggedIn && language === 'en'">
+            ⚠️ Login required to save your score!
+          </p>
         </div>
-        <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched">
+        <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'hu'">
+          📺 Reklam Megtekintése a Folytatáshoz
+        </button>
+        <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'en'">
           📺 Watch Ad to Continue
         </button>
         <div class="weapon-selector-gameover">
-          <h3>🔫 SELECT WEAPON</h3>
+          <h3 *ngIf="language === 'hu'">🔫 VÁLASSZ FEGYVERT</h3>
+          <h3 *ngIf="language === 'en'">🔫 SELECT WEAPON</h3>
           <div class="weapon-options">
             <div 
               *ngFor="let weapon of weapons" 
               class="weapon-option"
-              [class.selected]="currentWeapon.name === weapon.name"
+              [class.selected]="currentWeapon.id === weapon.id"
               (click)="selectWeapon(weapon)">
-              <div class="weapon-icon">{{ weapon.name === 'Pistol' ? '🔫' : weapon.name === 'Shotgun' ? '💥' : weapon.name === 'Rifle' ? '🎯' : weapon.name === 'Minigun' ? '🌀' : weapon.name === 'Burst Rifle' ? '⚡' : '🔭' }}</div>
-              <div class="weapon-name">{{ weapon.name }}</div>
+              <div class="weapon-icon">{{ weapon.id === 'pistol' ? '🔫' : weapon.id === 'shotgun' ? '💥' : weapon.id === 'rifle' ? '🎯' : weapon.id === 'minigun' ? '⚡' : weapon.id === 'burst' ? '💫' : '🎪' }}</div>
+              <div class="weapon-name">{{ getWeaponName(weapon.id) }}</div>
             </div>
           </div>
         </div>
-        <button (click)="restart()" class="restart-btn">RESTART</button>
+        <button (click)="restart()" class="restart-btn" *ngIf="language === 'hu'">UJRAINDÍTÁS</button>
+        <button (click)="restart()" class="restart-btn" *ngIf="language === 'en'">RESTART</button>
       </div>
       
       <div class="leaderboard" *ngIf="showLeaderboard">
