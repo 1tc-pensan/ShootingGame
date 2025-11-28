@@ -3895,13 +3895,17 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     // Slow motion
     if (this.slowMotion > 0) {
       this.slowMotion--;
+      // Slow motion cooldown is separate and runs even during slow-mo
+      if (this.slowMotionCooldown > 0) {
+        this.slowMotionCooldown--;
+      }
       // Skip some updates for slow-mo effect
       if (this.slowMotion % 2 === 0) return;
-    }
-    
-    // Slow motion cooldown
-    if (this.slowMotionCooldown > 0) {
-      this.slowMotionCooldown--;
+    } else {
+      // Only decrease cooldown when NOT in slow motion
+      if (this.slowMotionCooldown > 0) {
+        this.slowMotionCooldown--;
+      }
     }
     
     // Kill streak timer
