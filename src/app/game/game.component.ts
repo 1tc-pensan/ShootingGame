@@ -1950,24 +1950,27 @@ interface ColorOption {
       right: 20px;
       transform: translateY(-50%);
       background: rgba(20, 10, 40, 0.98);
-      padding: 30px;
       border: 4px solid #ff00ff;
       border-radius: 20px;
       box-shadow: 0 0 50px rgba(255, 0, 255, 0.5);
       color: white;
       width: 500px;
       max-height: 80vh;
-      overflow-y: auto;
       z-index: 1000;
+      display: flex;
+      flex-direction: column;
     }
     
     .achievements-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      padding: 30px 30px 15px 30px;
       border-bottom: 2px solid #ff00ff;
-      padding-bottom: 15px;
+      background: rgba(20, 10, 40, 0.98);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     
     .achievements-header h2 {
@@ -1978,8 +1981,12 @@ interface ColorOption {
     }
     
     .achievements-progress {
-      margin-bottom: 20px;
+      padding: 20px 30px;
       text-align: center;
+      background: rgba(20, 10, 40, 0.98);
+      position: sticky;
+      top: 92px;
+      z-index: 9;
     }
     
     .achievements-progress span {
@@ -2009,6 +2016,9 @@ interface ColorOption {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      padding: 0 30px 30px 30px;
+      overflow-y: auto;
+      flex: 1;
     }
     
     .achievement-item {
