@@ -2101,6 +2101,29 @@ interface ColorOption {
       flex: 1;
     }
     
+    /* Custom Scrollbar for Achievements */
+    .achievements-list::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    .achievements-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    
+    .achievements-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #ff00ff, #aa00ff);
+      border-radius: 10px;
+      border: 2px solid rgba(255, 0, 255, 0.3);
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+    }
+    
+    .achievements-list::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ff33ff, #cc00ff);
+      box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+    }
+    
     .achievement-item {
       display: flex;
       gap: 15px;
@@ -2224,6 +2247,29 @@ interface ColorOption {
       flex: 1;
       overflow-y: auto;
       padding: 0 30px 30px 30px;
+    }
+    
+    /* Custom Scrollbar for Skills */
+    .skills-list::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    .skills-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    
+    .skills-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #00aaff, #0066ff);
+      border-radius: 10px;
+      border: 2px solid rgba(0, 170, 255, 0.3);
+      box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
+    }
+    
+    .skills-list::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #00ddff, #0088ff);
+      box-shadow: 0 0 15px rgba(0, 170, 255, 0.8);
     }
     
     .skill-item {
