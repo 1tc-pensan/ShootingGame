@@ -2,7 +2,7 @@
 // For production, use Redis or similar
 const requestCounts = new Map();
 const WINDOW_MS = 60000; // 1 minute
-const MAX_REQUESTS = 10; // Max requests per window
+const MAX_REQUESTS = 50; // Max requests per window (increased for shared IPs like schools)
 
 function cleanupOldEntries() {
   const now = Date.now();

@@ -83,7 +83,7 @@ exports.handler = async (event) => {
   const rateLimit = checkRateLimit(clientIP);
   
   // Add rate limit headers
-  headers['X-RateLimit-Limit'] = '10';
+  headers['X-RateLimit-Limit'] = '50';
   headers['X-RateLimit-Remaining'] = rateLimit.remaining.toString();
   
   if (!rateLimit.allowed) {

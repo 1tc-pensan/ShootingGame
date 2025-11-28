@@ -69,7 +69,7 @@ exports.handler = async (event) => {
     const clientIP = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
     const rateLimit = checkRateLimit(`score_${clientIP}`);
     
-    headers['X-RateLimit-Limit'] = '10';
+    headers['X-RateLimit-Limit'] = '50';
     headers['X-RateLimit-Remaining'] = rateLimit.remaining.toString();
     
     if (!rateLimit.allowed) {
