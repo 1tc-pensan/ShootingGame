@@ -587,6 +587,9 @@ interface ColorOption {
           <!-- Scores Tab -->
           <div *ngIf="adminTab === 'scores'" class="admin-scores">
             <div class="score-list">
+              <div *ngIf="adminScores.length === 0" class="empty-message">
+                📊 No scores found
+              </div>
               <div *ngFor="let score of adminScores" class="score-item">
                 <span>{{score.username}}</span>
                 <span>{{score.score}} pts</span>
@@ -600,7 +603,7 @@ interface ColorOption {
                       [disabled]="adminScorePage === 1">
                 ◀ Prev
               </button>
-              <span>Page {{adminScorePage}} / {{adminScoreTotalPages}}</span>
+              <span>Page {{adminScorePage}} / {{adminScoreTotalPages || 1}}</span>
               <button (click)="adminScorePage = adminScorePage + 1; loadAdminScores()" 
                       [disabled]="adminScorePage >= adminScoreTotalPages">
                 Next ▶
@@ -2832,6 +2835,14 @@ interface ColorOption {
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+    
+    .empty-message {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+      font-size: 1.2em;
+      font-style: italic;
     }
     
     .suspicious-item, .user-item, .score-item {
