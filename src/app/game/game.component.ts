@@ -3710,6 +3710,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   weaponLevel: number = 1;
   killStreak: number = 0;
   lastKillTime: number = 0;
+  gameStartTime: number = 0;
   slowMotion: number = 0;
   slowMotionCooldown: number = 0;
   waveDamageTaken: boolean = false;
@@ -4180,6 +4181,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.weaponLevel = 1;
     this.killStreak = 0;
     this.lastKillTime = 0;
+    this.gameStartTime = Date.now();
     this.slowMotion = 0;
     this.score = 0;
     this.wave = 1;
@@ -4776,6 +4778,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.wave++;
     this.waveDamageTaken = false; // Reset for next wave
+    
+    // Check Speedrunner achievement
+    if (this.wave === 10) {
+      const elapsedTime = (Date.now() - this.gameStartTime) / 1000; // seconds
+      if (elapsedTime <= 120) { // 2 minutes
+        this.unlockAchievement('speedrunner');
+      }
+    }
     
     // Award skill point every 5 waves
     if (this.wave % 5 === 0) {
@@ -6299,7 +6309,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       {
         id: 'speedrunner',
         title: 'Speedrunner',
-        description: 'Reach wave 10 in under 5 minutes',
+        description: 'Reach wave 10 in under 2 minutes',
         icon: '⏰',
         unlocked: false,
         condition: (stats) => false // Checked in game
