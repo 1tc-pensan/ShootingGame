@@ -4302,24 +4302,35 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.saveCoins(); // Saves both coins and upgrades
     this.applyPermanentUpgrades();
+    
+    // Show visual feedback
+    this.screenFlash = 0.3;
+    this.screenFlashColor = '#ffd700';
   }
   
   applyPermanentUpgrades() {
     const maxHealthUpgrade = this.permanentUpgrades.find(u => u.id === 'max_health');
     if (maxHealthUpgrade) {
-      this.player.maxHealth = 100 + (maxHealthUpgrade.level * maxHealthUpgrade.value);
+      const newMaxHealth = 100 + (maxHealthUpgrade.level * maxHealthUpgrade.value);
+      this.player.maxHealth = newMaxHealth;
+      // Heal player to new max if current health is below new max
+      if (this.player.health < newMaxHealth) {
+        this.player.health = Math.min(this.player.health, newMaxHealth);
+      }
     }
     
     const speedUpgrade = this.permanentUpgrades.find(u => u.id === 'move_speed');
     if (speedUpgrade) {
-      this.player.speed = 6 * (1 + speedUpgrade.level * speedUpgrade.value);
-      this.playerSpeed = this.player.speed;
+      const newSpeed = 6 * (1 + speedUpgrade.level * speedUpgrade.value);
+      this.player.speed = newSpeed;
+      this.playerSpeed = newSpeed;
     }
     
     const fireRateUpgrade = this.permanentUpgrades.find(u => u.id === 'fire_rate');
     if (fireRateUpgrade) {
-      this.shootCooldown = Math.floor(150 * (1 - fireRateUpgrade.level * fireRateUpgrade.value));
-      this.playerFireRate = this.shootCooldown;
+      const newCooldown = Math.floor(150 * (1 - fireRateUpgrade.level * fireRateUpgrade.value));
+      this.shootCooldown = newCooldown;
+      this.playerFireRate = newCooldown;
     }
   }
   
@@ -4774,6 +4785,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Apply permanent upgrades
     this.applyPermanentUpgrades();
+    
+    // Set health to max health after upgrades applied
+    this.player.health = this.player.maxHealth;
     
     // Apply starting weapon level
     const startingWeaponUpgrade = this.permanentUpgrades.find(u => u.id === 'start_weapon');
