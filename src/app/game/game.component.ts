@@ -4313,10 +4313,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     if (maxHealthUpgrade) {
       const newMaxHealth = 100 + (maxHealthUpgrade.level * maxHealthUpgrade.value);
       this.player.maxHealth = newMaxHealth;
-      // Heal player to new max if current health is below new max
-      if (this.player.health < newMaxHealth) {
-        this.player.health = Math.min(this.player.health, newMaxHealth);
-      }
+      // Don't reduce health if it's already higher
+      // Only adjust if we bought a new upgrade during game
     }
     
     const speedUpgrade = this.permanentUpgrades.find(u => u.id === 'move_speed');
@@ -5070,7 +5068,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         enemy.x += (dx / dist) * enemy.speed;
         enemy.y += (dy / dist) * enemy.speed;
         enemy.shootTimer++;
-        if (enemy.shootTimer > 90) {
+        if (enemy.shootTimer > 60) { // Reduced from 90
           this.enemyShoot(enemy);
           enemy.shootTimer = 0;
         }
@@ -5211,13 +5209,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const dy = this.player.y + this.player.height / 2 - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     
+    const diffMultipliers = this.getDifficultyMultipliers();
+    
     this.bullets.push({
       x: enemy.x,
       y: enemy.y,
-      vx: (dx / dist) * 4,
-      vy: (dy / dist) * 4,
+      vx: (dx / dist) * 4.5,
+      vy: (dy / dist) * 4.5,
       radius: 5,
-      damage: 15,
+      damage: Math.floor(20 * diffMultipliers.enemyDamage),
       fromPlayer: false
     });
   }
@@ -5412,14 +5412,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
     const configs = {
-      basic: { width: 30, height: 30, health: 50, speed: 1.0 },
-      fast: { width: 25, height: 25, health: 30, speed: 2.0 },
-      tank: { width: 50, height: 50, health: 150, speed: 0.5 },
-      shooter: { width: 35, height: 35, health: 60, speed: 0.7 },
-      healer: { width: 28, height: 28, health: 40, speed: 0.8 },
-      exploder: { width: 32, height: 32, health: 35, speed: 1.3 },
-      dodger: { width: 22, height: 22, health: 25, speed: 2.3 },
-      miniboss: { width: 70, height: 70, health: 250, speed: 0.6 }
+      basic: { width: 30, height: 30, health: 70, speed: 1.2 },
+      fast: { width: 25, height: 25, health: 45, speed: 2.5 },
+      tank: { width: 50, height: 50, health: 250, speed: 0.7 },
+      shooter: { width: 35, height: 35, health: 90, speed: 0.9 },
+      healer: { width: 28, height: 28, health: 60, speed: 1.0 },
+      exploder: { width: 32, height: 32, health: 50, speed: 1.5 },
+      dodger: { width: 22, height: 22, health: 38, speed: 2.8 },
+      miniboss: { width: 70, height: 70, health: 400, speed: 0.8 }
     };
     
     const config = configs[type];
@@ -5428,8 +5428,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const diffMultipliers = this.getDifficultyMultipliers();
     
     // Wave scaling
-    const healthScale = 1 + (this.wave - 1) * 0.2; // +20% HP per wave
-    const speedScale = 1 + (this.wave - 1) * 0.08; // +8% speed per wave
+    const healthScale = 1 + (this.wave - 1) * 0.3; // +30% HP per wave (was 20%)
+    const speedScale = 1 + (this.wave - 1) * 0.12; // +12% speed per wave (was 8%)
     
     // Apply difficulty multipliers
     const finalHealthScale = healthScale * diffMultipliers.enemyHP;
@@ -5465,8 +5465,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   spawnBoss() {
     const bossIteration = Math.floor(this.wave / 5);
-    const healthScale = 1 + bossIteration * 0.8; // +80% HP per boss iteration
-    const baseHealth = 1000;
+    const healthScale = 1 + bossIteration * 1.2; // +120% HP per boss iteration (was 80%)
+    const baseHealth = 1500; // Increased from 1000
     
     // Random boss type
     const bossTypes = ['normal', 'tank', 'speed', 'sniper'] as const;
@@ -5791,7 +5791,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                this.player.y + this.player.height / 2, '#00ddff', 15);
             this.player.invulnerable = 30; // Short invulnerability after dodge
           } else {
-            this.player.health -= 25;
+            const diffMultipliers = this.getDifficultyMultipliers();
+            this.player.health -= Math.floor(30 * diffMultipliers.enemyDamage);
             this.player.invulnerable = 60;
             this.waveDamageTaken = true;
             this.screenShake = 20;
