@@ -33,6 +33,8 @@ async function initDB() {
         username VARCHAR(50) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         email VARCHAR(100) UNIQUE,
+        coins INTEGER DEFAULT 0,
+        permanent_upgrades TEXT DEFAULT '[]',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;

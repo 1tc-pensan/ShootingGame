@@ -5,6 +5,20 @@ import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, fromEvent } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 
+type Difficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
+type GameMode = 'classic' | 'survival' | 'boss_rush' | 'time_attack';
+
+interface PermanentUpgrade {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  level: number;
+  maxLevel: number;
+  effect: string;
+  value: number;
+}
+
 interface Player {
   x: number;
   y: number;
@@ -415,6 +429,13 @@ interface ColorOption {
           🌟 SKILLS
         </button>
         
+        <button 
+          *ngIf="!showShop && !gameStarted" 
+          (click)="showShop = !showShop" 
+          class="side-menu-btn shop-btn">
+          🛒 {{ language === 'hu' ? 'BOLT' : 'SHOP' }}
+        </button>
+        
         <a 
           *ngIf="gameStarted && !gameOver"
           href="https://ko-fi.com/szeretemakiflit" 
@@ -514,6 +535,51 @@ interface ColorOption {
               [disabled]="skill.currentLevel >= skill.maxLevel || skillPoints < skill.cost">
               <span *ngIf="skill.currentLevel < skill.maxLevel">↑ {{skill.cost}}</span>
               <span *ngIf="skill.currentLevel >= skill.maxLevel">MAX</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Shop Panel -->
+      <div class="shop-panel" *ngIf="showShop">
+        <div class="shop-header">
+          <h2>🛒 {{ language === 'hu' ? 'BOLT' : 'SHOP' }} 🛒</h2>
+          <button (click)="showShop = false" class="close-btn">✕</button>
+        </div>
+        <div class="shop-coins">
+          <span>💰 {{ language === 'hu' ? 'Érmék:' : 'Coins:' }} <span class="coins-value">{{totalCoins}}</span></span>
+          <div class="cloud-save-indicator" *ngIf="authService.isLoggedIn">
+            <span>☁️ {{ language === 'hu' ? 'Felhő mentés aktív' : 'Cloud save active' }}</span>
+          </div>
+        </div>
+        <div class="shop-list">
+          <div *ngFor="let upgrade of permanentUpgrades" class="shop-item">
+            <div class="shop-item-icon">
+              {{ upgrade.effect === 'maxHealth' ? '❤️' : 
+                 upgrade.effect === 'damage' ? '⚔️' : 
+                 upgrade.effect === 'speed' ? '👟' : 
+                 upgrade.effect === 'fireRate' ? '🔫' : 
+                 upgrade.effect === 'coinMultiplier' ? '💰' : 
+                 upgrade.effect === 'startingWeaponLevel' ? '🎯' : 
+                 upgrade.effect === 'healthRegen' ? '💚' : 
+                 upgrade.effect === 'shieldChance' ? '🛡️' : '⭐' }}
+            </div>
+            <div class="shop-item-info">
+              <div class="shop-item-name">{{upgrade.name}}</div>
+              <div class="shop-item-desc">{{upgrade.description}}</div>
+              <div class="shop-item-level">
+                <span class="level-text">{{ language === 'hu' ? 'Szint:' : 'Level:' }} {{upgrade.level}}/{{upgrade.maxLevel}}</span>
+                <div class="level-bar">
+                  <div class="level-fill" [style.width.%]="(upgrade.level / upgrade.maxLevel) * 100"></div>
+                </div>
+              </div>
+            </div>
+            <button 
+              class="shop-buy-btn" 
+              (click)="purchaseUpgrade(upgrade)"
+              [disabled]="!canAffordUpgrade(upgrade)">
+              <span *ngIf="upgrade.level < upgrade.maxLevel">💰 {{getUpgradeCost(upgrade)}}</span>
+              <span *ngIf="upgrade.level >= upgrade.maxLevel">MAX</span>
             </button>
           </div>
         </div>
@@ -842,6 +908,23 @@ interface ColorOption {
           <p *ngIf="language === 'en'"><span class="enemy-shooter">█</span> Shooter - Shoots at you!</p>
           <p *ngIf="language === 'hu'"><span class="enemy-boss">█</span> Boss - Hatalmas élet, mintazás lövések</p>
           <p *ngIf="language === 'en'"><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
+        </div>
+        
+        <div class="difficulty-selection">
+          <h2 *ngIf="language === 'hu'">⚔️ Válassz Nehézséget!</h2>
+          <h2 *ngIf="language === 'en'">⚔️ Choose Difficulty!</h2>
+          <div class="difficulty-grid">
+            <button 
+              *ngFor="let diff of difficulties"
+              (click)="selectDifficulty(diff)"
+              [class.selected]="currentDifficulty === diff"
+              class="difficulty-card">
+              <div class="difficulty-icon">{{ getDifficultyIcon(diff) }}</div>
+              <div class="difficulty-name">{{ getDifficultyName(diff) }}</div>
+              <div class="difficulty-desc">{{ getDifficultyDesc(diff) }}</div>
+              <div class="difficulty-rewards">{{ getDifficultyReward(diff) }}</div>
+            </button>
+          </div>
         </div>
         
         <div class="weapon-selection-menu">
@@ -1501,6 +1584,77 @@ interface ColorOption {
     .enemy-tank { color: #ffaa00; }
     .enemy-shooter { color: #ff0000; }
     .enemy-boss { color: #ff0000; font-size: 1.5em; }
+    
+    .difficulty-selection {
+      margin: 30px 0;
+      width: 100%;
+      max-width: 900px;
+    }
+    
+    .difficulty-selection h2 {
+      color: #ff6600;
+      text-align: center;
+      font-size: 2em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #ff6600;
+    }
+    
+    .difficulty-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      padding: 20px;
+    }
+    
+    .difficulty-card {
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(30, 10, 10, 0.9));
+      border: 2px solid #ff6600;
+      border-radius: 15px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(255, 102, 0, 0.2);
+    }
+    
+    .difficulty-card:hover {
+      border-color: #ffaa00;
+      box-shadow: 0 8px 25px rgba(255, 170, 0, 0.4);
+      transform: translateY(-5px);
+      background: linear-gradient(135deg, rgba(25, 25, 50, 0.95), rgba(35, 15, 15, 0.95));
+    }
+    
+    .difficulty-card.selected {
+      border-color: #00ff00;
+      background: linear-gradient(135deg, rgba(0, 40, 0, 0.9), rgba(0, 25, 0, 0.9));
+      box-shadow: 0 10px 35px rgba(0, 255, 0, 0.5);
+    }
+    
+    .difficulty-icon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+    
+    .difficulty-name {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    
+    .difficulty-desc {
+      color: #aaa;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+      min-height: 40px;
+    }
+    
+    .difficulty-rewards {
+      color: #ffaa00;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-top: 10px;
+    }
     
     .weapon-selection-menu {
       margin: 30px 0;
@@ -3030,6 +3184,175 @@ interface ColorOption {
       box-shadow: none;
     }
     
+    /* Shop Panel */
+    .shop-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 20, 40, 0.98);
+      border: 4px solid #ffd700;
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+      color: white;
+      width: 600px;
+      max-height: 80vh;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .shop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 30px 30px 15px 30px;
+      border-bottom: 2px solid #ffd700;
+      background: rgba(10, 20, 40, 0.98);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .shop-header h2 {
+      color: #ffd700;
+      margin: 0;
+      font-size: 2em;
+      text-shadow: 0 0 15px #ffd700;
+    }
+    
+    .shop-coins {
+      padding: 20px 30px;
+      text-align: center;
+      background: rgba(10, 20, 40, 0.98);
+      position: sticky;
+      top: 92px;
+      z-index: 9;
+      font-size: 1.3em;
+      color: #ccc;
+      border-bottom: 1px solid #ffd700;
+    }
+    
+    .coins-value {
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 1.2em;
+      text-shadow: 0 0 10px #ffd700;
+    }
+    
+    .cloud-save-indicator {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #00ddff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      justify-content: center;
+      opacity: 0.8;
+    }
+    
+    .shop-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 30px 30px 30px;
+    }
+    
+    .shop-list::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    .shop-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    
+    .shop-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #ffd700, #ffaa00);
+      border-radius: 10px;
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    
+    .shop-list::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ffee00, #ffcc00);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+    }
+    
+    .shop-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 20px;
+      margin: 15px 0;
+      background: rgba(200, 150, 0, 0.1);
+      border: 2px solid #ffd700;
+      border-radius: 15px;
+      transition: all 0.3s;
+    }
+    
+    .shop-item:hover {
+      background: rgba(200, 150, 0, 0.2);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+      transform: translateY(-3px);
+    }
+    
+    .shop-item-icon {
+      font-size: 2.5em;
+      min-width: 60px;
+      text-align: center;
+    }
+    
+    .shop-item-info {
+      flex: 1;
+    }
+    
+    .shop-item-name {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #ffd700;
+      margin-bottom: 5px;
+    }
+    
+    .shop-item-desc {
+      font-size: 0.9em;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+    
+    .shop-item-level {
+      margin-top: 8px;
+    }
+    
+    .shop-buy-btn {
+      padding: 15px 25px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: 2px solid #ffd700;
+      background: linear-gradient(135deg, #cc8800, #ffd700);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+      font-family: 'Courier New', monospace;
+      min-width: 90px;
+    }
+    
+    .shop-buy-btn:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+      background: linear-gradient(135deg, #dd9900, #ffee00);
+    }
+    
+    .shop-buy-btn:disabled {
+      background: #333;
+      border-color: #555;
+      color: #666;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    
     /* Admin Panel */
     .admin-panel {
       position: fixed;
@@ -3745,6 +4068,24 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   gameStarted: boolean = false;
   isPaused: boolean = false;
   
+  // Game mode & difficulty
+  currentDifficulty: Difficulty = 'normal';
+  currentGameMode: GameMode = 'classic';
+  showDifficultySelect: boolean = false;
+  showGameModeSelect: boolean = false;
+  
+  // Coins & Permanent Upgrades
+  totalCoins: number = 0;
+  showShop: boolean = false;
+  permanentUpgrades: PermanentUpgrade[] = [];
+  
+  // Time Attack mode
+  timeAttackKillGoal: number = 100;
+  timeAttackStartTime: number = 0;
+  
+  // Boss Rush mode
+  bossRushKillCount: number = 0;
+  
   lastShot: number = 0;
   shootCooldown: number = 150;
   
@@ -3824,6 +4165,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   ];
   
+  difficulties: Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
+  
   getWeaponName(weaponId: string): string {
     const names: any = {
       'hu': {
@@ -3867,6 +4210,229 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     return descs[this.language][weaponId] || '';
   }
+  
+  getDifficultyIcon(diff: Difficulty): string {
+    const icons: Record<Difficulty, string> = { 'easy': '😊', 'normal': '⚔️', 'hard': '💀', 'nightmare': '👹' };
+    return icons[diff];
+  }
+  
+  getDifficultyName(diff: Difficulty): string {
+    if (this.language === 'hu') {
+      const names: Record<Difficulty, string> = { 'easy': 'Könnyű', 'normal': 'Normál', 'hard': 'Nehéz', 'nightmare': 'Rémálom' };
+      return names[diff];
+    } else {
+      const names: Record<Difficulty, string> = { 'easy': 'Easy', 'normal': 'Normal', 'hard': 'Hard', 'nightmare': 'Nightmare' };
+      return names[diff];
+    }
+  }
+  
+  getDifficultyDesc(diff: Difficulty): string {
+    if (this.language === 'hu') {
+      const descs: Record<Difficulty, string> = {
+        'easy': '-30% ellenség HP, +20% pontszám',
+        'normal': 'Alapértelmezett nehézség',
+        'hard': '+50% ellenség HP/sebzés, +50% pontszám',
+        'nightmare': '+100% HP/sebzés/sebesség, +100% pontszám'
+      };
+      return descs[diff];
+    } else {
+      const descs: Record<Difficulty, string> = {
+        'easy': '-30% enemy HP, +20% score',
+        'normal': 'Default difficulty',
+        'hard': '+50% enemy HP/damage, +50% score',
+        'nightmare': '+100% HP/damage/speed, +100% score'
+      };
+      return descs[diff];
+    }
+  }
+  
+  getDifficultyReward(diff: Difficulty): string {
+    if (this.language === 'hu') {
+      const rewards: Record<Difficulty, string> = { 'easy': '📊 Kedvező kezdőknek', 'normal': '⭐ Kiegyensúlyozott', 'hard': '🏆 Nagyobb kihívás', 'nightmare': '💎 Maximális jutalom' };
+      return rewards[diff];
+    } else {
+      const rewards: Record<Difficulty, string> = { 'easy': '📊 Beginner friendly', 'normal': '⭐ Balanced', 'hard': '🏆 Greater challenge', 'nightmare': '💎 Maximum reward' };
+      return rewards[diff];
+    }
+  }
+  
+  selectDifficulty(diff: Difficulty) {
+    this.currentDifficulty = diff;
+    localStorage.setItem('selectedDifficulty', diff);
+  }
+  
+  getDifficultyMultipliers() {
+    const multipliers = {
+      'easy': { enemyHP: 0.7, enemySpeed: 0.9, enemyDamage: 0.8, scoreBonus: 0.8 },
+      'normal': { enemyHP: 1.0, enemySpeed: 1.0, enemyDamage: 1.0, scoreBonus: 1.0 },
+      'hard': { enemyHP: 1.5, enemySpeed: 1.2, enemyDamage: 1.5, scoreBonus: 1.5 },
+      'nightmare': { enemyHP: 2.0, enemySpeed: 1.5, enemyDamage: 2.0, scoreBonus: 2.0 }
+    };
+    return multipliers[this.currentDifficulty];
+  }
+  
+  // Permanent Upgrades System
+  initPermanentUpgrades() {
+    this.permanentUpgrades = [
+      { id: 'max_health', name: this.language === 'hu' ? 'Max Életerő' : 'Max Health', description: this.language === 'hu' ? '+20 Max HP' : '+20 Max HP', cost: 10, level: 0, maxLevel: 10, effect: 'maxHealth', value: 20 },
+      { id: 'base_damage', name: this.language === 'hu' ? 'Alap Sebzés' : 'Base Damage', description: this.language === 'hu' ? '+10% Sebzés' : '+10% Damage', cost: 15, level: 0, maxLevel: 10, effect: 'damage', value: 0.1 },
+      { id: 'move_speed', name: this.language === 'hu' ? 'Mozgási Sebesség' : 'Move Speed', description: this.language === 'hu' ? '+5% Sebesség' : '+5% Speed', cost: 12, level: 0, maxLevel: 10, effect: 'speed', value: 0.05 },
+      { id: 'fire_rate', name: this.language === 'hu' ? 'Tüzelési Sebesség' : 'Fire Rate', description: this.language === 'hu' ? '+8% Tüzelés' : '+8% Fire Rate', cost: 18, level: 0, maxLevel: 10, effect: 'fireRate', value: 0.08 },
+      { id: 'coin_gain', name: this.language === 'hu' ? 'Érem Gyűjtés' : 'Coin Gain', description: this.language === 'hu' ? '+25% Érmék' : '+25% Coins', cost: 20, level: 0, maxLevel: 5, effect: 'coinMultiplier', value: 0.25 },
+      { id: 'start_weapon', name: this.language === 'hu' ? 'Kezdő Fegyver' : 'Starting Weapon', description: this.language === 'hu' ? 'Kezdés 1 szinttel' : 'Start at Level 1', cost: 50, level: 0, maxLevel: 3, effect: 'startingWeaponLevel', value: 1 },
+      { id: 'regen', name: this.language === 'hu' ? 'Regeneráció' : 'Regeneration', description: this.language === 'hu' ? '1 HP / 5 sec' : '1 HP / 5 sec', cost: 30, level: 0, maxLevel: 5, effect: 'healthRegen', value: 1 },
+      { id: 'shield_chance', name: this.language === 'hu' ? 'Pajzs Esély' : 'Shield Chance', description: this.language === 'hu' ? '+5% Pajzs' : '+5% Shield', cost: 25, level: 0, maxLevel: 4, effect: 'shieldChance', value: 0.05 }
+    ];
+  }
+  
+  getUpgradeCost(upgrade: PermanentUpgrade): number {
+    return Math.floor(upgrade.cost * Math.pow(1.5, upgrade.level));
+  }
+  
+  canAffordUpgrade(upgrade: PermanentUpgrade): boolean {
+    return this.totalCoins >= this.getUpgradeCost(upgrade) && upgrade.level < upgrade.maxLevel;
+  }
+  
+  purchaseUpgrade(upgrade: PermanentUpgrade) {
+    if (!this.canAffordUpgrade(upgrade)) return;
+    
+    const cost = this.getUpgradeCost(upgrade);
+    this.totalCoins -= cost;
+    upgrade.level++;
+    
+    this.saveCoins(); // Saves both coins and upgrades
+    this.applyPermanentUpgrades();
+  }
+  
+  applyPermanentUpgrades() {
+    const maxHealthUpgrade = this.permanentUpgrades.find(u => u.id === 'max_health');
+    if (maxHealthUpgrade) {
+      this.player.maxHealth = 100 + (maxHealthUpgrade.level * maxHealthUpgrade.value);
+    }
+    
+    const speedUpgrade = this.permanentUpgrades.find(u => u.id === 'move_speed');
+    if (speedUpgrade) {
+      this.player.speed = 6 * (1 + speedUpgrade.level * speedUpgrade.value);
+      this.playerSpeed = this.player.speed;
+    }
+    
+    const fireRateUpgrade = this.permanentUpgrades.find(u => u.id === 'fire_rate');
+    if (fireRateUpgrade) {
+      this.shootCooldown = Math.floor(150 * (1 - fireRateUpgrade.level * fireRateUpgrade.value));
+      this.playerFireRate = this.shootCooldown;
+    }
+  }
+  
+  getUpgradeEffect(effectType: string): number {
+    const upgrade = this.permanentUpgrades.find(u => u.effect === effectType);
+    return upgrade ? upgrade.level * upgrade.value : 0;
+  }
+  
+  async saveCoins() {
+    const token = this.authService.getToken();
+    
+    if (!token) {
+      // Fallback to localStorage if not logged in
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('bulletHellCoins', this.totalCoins.toString());
+        localStorage.setItem('bulletHellUpgrades', JSON.stringify(this.permanentUpgrades));
+      }
+      return;
+    }
+    
+    try {
+      await this.http.post(`${this.apiUrl}/profile`, {
+        token,
+        coins: this.totalCoins,
+        permanentUpgrades: this.permanentUpgrades
+      }).toPromise();
+    } catch (error) {
+      console.error('Failed to save coins:', error);
+      // Fallback to localStorage on error
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('bulletHellCoins', this.totalCoins.toString());
+        localStorage.setItem('bulletHellUpgrades', JSON.stringify(this.permanentUpgrades));
+      }
+    }
+  }
+  
+  async loadCoins() {
+    const token = this.authService.getToken();
+    
+    if (!token) {
+      // Fallback to localStorage if not logged in
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const savedCoins = localStorage.getItem('bulletHellCoins');
+        if (savedCoins) {
+          this.totalCoins = parseInt(savedCoins, 10);
+        }
+        
+        const savedUpgrades = localStorage.getItem('bulletHellUpgrades');
+        if (savedUpgrades) {
+          const loadedUpgrades = JSON.parse(savedUpgrades);
+          loadedUpgrades.forEach((saved: any) => {
+            const existing = this.permanentUpgrades.find(u => u.id === saved.id);
+            if (existing) {
+              existing.level = saved.level || 0;
+            }
+          });
+        }
+      }
+      return;
+    }
+    
+    try {
+      const response: any = await this.http.get(`${this.apiUrl}/profile?token=${token}`).toPromise();
+      this.totalCoins = response.coins || 0;
+      
+      // Load upgrades too
+      if (response.permanentUpgrades && Array.isArray(response.permanentUpgrades)) {
+        response.permanentUpgrades.forEach((saved: any) => {
+          const existing = this.permanentUpgrades.find(u => u.id === saved.id);
+          if (existing) {
+            existing.level = saved.level || 0;
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load coins:', error);
+      // Fallback to localStorage on error
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const savedCoins = localStorage.getItem('bulletHellCoins');
+        if (savedCoins) {
+          this.totalCoins = parseInt(savedCoins, 10);
+        }
+        
+        const savedUpgrades = localStorage.getItem('bulletHellUpgrades');
+        if (savedUpgrades) {
+          const loadedUpgrades = JSON.parse(savedUpgrades);
+          loadedUpgrades.forEach((saved: any) => {
+            const existing = this.permanentUpgrades.find(u => u.id === saved.id);
+            if (existing) {
+              existing.level = saved.level || 0;
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  async savePermanentUpgrades() {
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    try {
+      await this.http.post(`${this.apiUrl}/profile`, {
+        token,
+        coins: this.totalCoins,
+        permanentUpgrades: this.permanentUpgrades
+      }).toPromise();
+    } catch (error) {
+      console.error('Failed to save upgrades:', error);
+    }
+  }
+  
+  // Removed - now handled in loadCoins()
   
   currentWeapon: Weapon = this.weapons[0];
   waveSpawnTimer: number = 0;
@@ -3969,7 +4535,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateCanvasSize();
   }
   
-  ngOnInit() {
+  async ngOnInit() {
     this.updateCanvasSize();
     this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
     this.loadCustomization();
@@ -3983,7 +4549,18 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadStats();
     this.loadAdSense();
     this.loadAnnouncement();
+    this.loadDifficulty();
+    this.initPermanentUpgrades();
+    await this.loadCoins(); // Load coins and upgrades from backend
+    this.applyPermanentUpgrades();
     this.render();
+  }
+  
+  loadDifficulty() {
+    const saved = localStorage.getItem('selectedDifficulty');
+    if (saved && ['easy', 'normal', 'hard', 'nightmare'].includes(saved)) {
+      this.currentDifficulty = saved as Difficulty;
+    }
   }
   
   ngAfterViewInit() {
@@ -4195,6 +4772,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.playerNameSubmitted = false;
     this.showLeaderboard = false;
     
+    // Apply permanent upgrades
+    this.applyPermanentUpgrades();
+    
+    // Apply starting weapon level
+    const startingWeaponUpgrade = this.permanentUpgrades.find(u => u.id === 'start_weapon');
+    if (startingWeaponUpgrade && startingWeaponUpgrade.level > 0) {
+      this.weaponLevel = startingWeaponUpgrade.level;
+    }
+    
     // Reset skills on new game
     this.resetSkills();
     
@@ -4255,14 +4841,17 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Health regeneration (every 5 seconds = 300 frames at 60fps)
     const regenLevel = this.getSkillValue('regen');
-    if (regenLevel > 0) {
+    const permanentRegen = this.getUpgradeEffect('healthRegen');
+    const totalRegen = regenLevel + permanentRegen;
+    
+    if (totalRegen > 0) {
       if (!this.hasOwnProperty('regenTimer')) {
         (this as any).regenTimer = 0;
       }
       (this as any).regenTimer++;
       if ((this as any).regenTimer >= 300) {
         (this as any).regenTimer = 0;
-        const healing = regenLevel;
+        const healing = totalRegen;
         if (this.player.health < this.player.maxHealth) {
           this.player.health = Math.min(this.player.maxHealth, this.player.health + healing);
           this.createDamageNumber(this.player.x, this.player.y - 30, healing, '#00ff88');
@@ -4785,6 +5374,17 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       if (elapsedTime <= 120) { // 2 minutes
         this.unlockAchievement('speedrunner');
       }
+      
+      // Check difficulty achievements
+      if (this.currentDifficulty === 'easy') this.unlockAchievement('easy_master');
+      if (this.currentDifficulty === 'normal') this.unlockAchievement('normal_champion');
+      if (this.currentDifficulty === 'hard') this.unlockAchievement('hard_warrior');
+      if (this.currentDifficulty === 'nightmare') this.unlockAchievement('nightmare_survivor');
+    }
+    
+    // Check Ultimate Champion achievement
+    if (this.wave === 20 && this.currentDifficulty === 'nightmare') {
+      this.unlockAchievement('ultimate_champion');
     }
     
     // Award skill point every 5 waves
@@ -4810,9 +5410,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     const config = configs[type];
     
+    // Get difficulty multipliers
+    const diffMultipliers = this.getDifficultyMultipliers();
+    
     // Wave scaling
     const healthScale = 1 + (this.wave - 1) * 0.2; // +20% HP per wave
     const speedScale = 1 + (this.wave - 1) * 0.08; // +8% speed per wave
+    
+    // Apply difficulty multipliers
+    const finalHealthScale = healthScale * diffMultipliers.enemyHP;
+    const finalSpeedScale = speedScale * diffMultipliers.enemySpeed;
     
     const side = Math.floor(Math.random() * 4);
     let x = 0, y = 0;
@@ -4833,9 +5440,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       x, y,
       width: config.width,
       height: config.height,
-      health: Math.floor(config.health * healthScale),
-      maxHealth: Math.floor(config.health * healthScale),
-      speed: config.speed * speedScale,
+      health: Math.floor(config.health * finalHealthScale),
+      maxHealth: Math.floor(config.health * finalHealthScale),
+      speed: config.speed * finalSpeedScale,
       type,
       shootTimer: 0,
       movePattern: 0
@@ -4929,7 +5536,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           
           if (this.circleRectCollision(bullet.x, bullet.y, bullet.radius, 
                                        enemy.x, enemy.y, enemy.width, enemy.height)) {
-            const damage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
+            // Apply damage multiplier from permanent upgrades
+            const damageMultiplier = 1 + this.getUpgradeEffect('damage');
+            const baseDamage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
+            const damage = baseDamage * damageMultiplier;
             
             // Critical hit chance (5% base + skill bonus)
             const baseCritChance = 0.05;
@@ -5080,7 +5690,23 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                            enemy.type === 'dodger' ? 80 :
                            enemy.type === 'fast' ? 50 : 25;
               
-              this.score += Math.floor(baseScore * this.combo.multiplier);
+              const diffMultipliers = this.getDifficultyMultipliers();
+              this.score += Math.floor(baseScore * this.combo.multiplier * diffMultipliers.scoreBonus);
+              
+              // Coin drop
+              const baseCoinValue = enemy.type.startsWith('boss') ? 50 : 
+                                   enemy.type === 'miniboss' ? 15 :
+                                   enemy.type === 'tank' ? 5 : 
+                                   enemy.type === 'shooter' ? 3 : 
+                                   enemy.type === 'healer' ? 4 :
+                                   enemy.type === 'exploder' ? 2 :
+                                   enemy.type === 'dodger' ? 3 :
+                                   enemy.type === 'fast' ? 2 : 1;
+              const coinMultiplier = 1 + this.getUpgradeEffect('coinMultiplier');
+              const finalCoins = Math.floor(baseCoinValue * coinMultiplier);
+              this.totalCoins += finalCoins;
+              this.saveCoins();
+              
               this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0000', 20);
               
               // Random power-up spawn (10% chance)
@@ -5106,18 +5732,29 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                      this.player.x, this.player.y, 
                                      this.player.width, this.player.height)) {
           if (this.player.invulnerable === 0) {
-            // Dodge chance
-            const dodgeChance = this.getSkillValue('dodge') / 100;
-            const dodged = Math.random() < dodgeChance;
+            // Shield chance from permanent upgrade
+            const shieldChance = this.getUpgradeEffect('shieldChance');
+            const hasShieldProc = Math.random() < shieldChance;
             
-            if (dodged) {
-              this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
-              this.createParticles(bullet.x, bullet.y, '#00ddff', 10);
+            if (hasShieldProc) {
+              this.createDamageNumber(this.player.x, this.player.y, 0, '#00ffff');
+              this.createParticles(bullet.x, bullet.y, '#00ffff', 15);
+              this.screenFlash = 0.2;
+              this.screenFlashColor = '#00ffff';
             } else {
-              this.player.health -= bullet.damage;
-              this.player.invulnerable = 60;
-              this.waveDamageTaken = true;
-              this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+              // Dodge chance
+              const dodgeChance = this.getSkillValue('dodge') / 100;
+              const dodged = Math.random() < dodgeChance;
+              
+              if (dodged) {
+                this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
+                this.createParticles(bullet.x, bullet.y, '#00ddff', 10);
+              } else {
+                this.player.health -= bullet.damage;
+                this.player.invulnerable = 60;
+                this.waveDamageTaken = true;
+                this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+              }
             }
           }
           this.bullets.splice(i, 1);
@@ -6239,6 +6876,46 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         title: 'Perfectionist',
         description: 'Get 95% accuracy in one game',
         icon: '💯',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'easy_master',
+        title: 'Easy Mode Master',
+        description: 'Complete wave 10 on Easy difficulty',
+        icon: '😊',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'normal_champion',
+        title: 'Normal Champion',
+        description: 'Complete wave 10 on Normal difficulty',
+        icon: '⚔️',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'hard_warrior',
+        title: 'Hard Warrior',
+        description: 'Complete wave 10 on Hard difficulty',
+        icon: '💀',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'nightmare_survivor',
+        title: 'Nightmare Survivor',
+        description: 'Complete wave 10 on Nightmare difficulty',
+        icon: '👹',
+        unlocked: false,
+        condition: (stats) => false // Checked in game
+      },
+      {
+        id: 'ultimate_champion',
+        title: 'Ultimate Champion',
+        description: 'Complete wave 20 on Nightmare difficulty',
+        icon: '🏆',
         unlocked: false,
         condition: (stats) => false // Checked in game
       },
