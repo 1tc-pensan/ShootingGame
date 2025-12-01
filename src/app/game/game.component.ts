@@ -406,6 +406,27 @@ interface ColorOption {
           </div>
         </div>
       </div>
+
+      <!-- Change Password Modal -->
+      <div class="edit-score-modal" *ngIf="showChangePasswordModal && authService.isAdmin">
+        <div class="edit-score-content">
+          <h2>🔑 Change Password</h2>
+          <div class="edit-form">
+            <label>
+              User: <strong>{{ changingPasswordUser?.username }}</strong> (ID: {{ changingPasswordUser?.id }})
+            </label>
+            <label>
+              New Password:
+              <input type="password" [(ngModel)]="newPasswordInput" placeholder="Enter new password" autocomplete="new-password">
+            </label>
+            <p class="warning-text">⚠️ This will log out the user from all devices!</p>
+          </div>
+          <div class="edit-actions">
+            <button class="save-btn" (click)="changeUserPassword()">🔑 Change Password</button>
+            <button class="cancel-btn" (click)="closeChangePasswordModal()">❌ Cancel</button>
+          </div>
+        </div>
+      </div>
       
       <div class="side-menu-buttons">
         <button 
@@ -674,12 +695,19 @@ interface ColorOption {
                   <span class="user-scores">{{user.score_count}} games</span>
                   <span class="user-best">Best: {{user.best_score || 0}}</span>
                 </div>
-                <button 
-                  *ngIf="user.id !== 1" 
-                  (click)="deleteUser(user.id)" 
-                  class="delete-btn">
-                  🗑️ DELETE
-                </button>
+                <div class="user-actions">
+                  <button 
+                    (click)="showChangePasswordModal(user)" 
+                    class="change-pass-btn">
+                    🔑 Change Password
+                  </button>
+                  <button 
+                    *ngIf="user.id !== 1" 
+                    (click)="deleteUser(user.id)" 
+                    class="delete-btn">
+                    🗑️ DELETE
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -3562,6 +3590,29 @@ interface ColorOption {
       font-size: 0.9em;
     }
     
+    .user-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .change-pass-btn {
+      background: linear-gradient(135deg, #0066ff, #0044cc);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+    
+    .change-pass-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(0, 102, 255, 0.8);
+    }
+    
     .delete-btn {
       background: linear-gradient(135deg, #ff0000, #cc0000);
       color: white;
@@ -3577,6 +3628,13 @@ interface ColorOption {
     .delete-btn:hover {
       transform: scale(1.1);
       box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+    }
+    
+    .warning-text {
+      color: #ff9900;
+      font-size: 0.9em;
+      margin: 10px 0;
+      font-weight: bold;
     }
     
     .pagination {
@@ -4482,6 +4540,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   adminUsers: any[] = [];
   announcementText: string = '';
   globalAnnouncement: string = '';
+  
+  // Change Password Modal
+  showChangePasswordModal: boolean = false;
+  changingPasswordUser: any = null;
+  newPasswordInput: string = '';
   
   // Edit Score Modal
   showEditScoreModal: boolean = false;
@@ -7601,6 +7664,57 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     .catch(err => {
       console.error('Failed to edit score:', err);
       alert('❌ Hiba a score módosításakor!');
+    });
+  }
+  
+  showChangePasswordModal(user: any) {
+    this.changingPasswordUser = user;
+    this.newPasswordInput = '';
+    this.showChangePasswordModal = true;
+  }
+  
+  closeChangePasswordModal() {
+    this.showChangePasswordModal = false;
+    this.changingPasswordUser = null;
+    this.newPasswordInput = '';
+  }
+  
+  changeUserPassword() {
+    const token = this.authService.getToken();
+    if (!token || !this.changingPasswordUser) return;
+    
+    if (!this.newPasswordInput || this.newPasswordInput.length < 4) {
+      alert('❌ A jelszónak legalább 4 karakter hosszúnak kell lennie!');
+      return;
+    }
+    
+    if (!confirm(`Biztosan megváltoztatod ${this.changingPasswordUser.username} jelszavát? Ez minden eszközön kijelentkezteti a felhasználót!`)) {
+      return;
+    }
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'changePassword',
+        token,
+        userId: this.changingPasswordUser.id,
+        newPassword: this.newPasswordInput
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('✅ Jelszó sikeresen megváltoztatva! A felhasználó minden eszközön kijelentkezett.');
+        this.closeChangePasswordModal();
+        this.loadAdminUsers();
+      } else {
+        alert('❌ Hiba: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      console.error('Failed to change password:', err);
+      alert('❌ Hiba a jelszó változtatásakor!');
     });
   }
   

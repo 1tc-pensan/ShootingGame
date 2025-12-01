@@ -349,6 +349,55 @@ exports.handler = async (event) => {
       };
     }
 
+    // CHANGE USER PASSWORD
+    if (action === 'changePassword') {
+      const { userId, newPassword } = body;
+      
+      // Validate user ID
+      if (!validateId(userId)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid user ID' })
+        };
+      }
+
+      // Validate password
+      if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4 || newPassword.length > 50) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Password must be 4-50 characters' })
+        };
+      }
+
+      // Hash the new password (simple hash for now, in production use bcrypt)
+      const crypto = require('crypto');
+      const hashedPassword = crypto.createHash('sha256').update(newPassword).digest('hex');
+
+      // Update password
+      await sql`
+        UPDATE users 
+        SET password = ${hashedPassword}
+        WHERE id = ${userId}
+      `;
+
+      // Invalidate all sessions for this user (force re-login)
+      await sql`
+        DELETE FROM sessions 
+        WHERE user_id = ${userId}
+      `;
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          success: true, 
+          message: 'Password changed successfully. User sessions cleared.' 
+        })
+      };
+    }
+
     return {
       statusCode: 400,
       headers,
