@@ -88,13 +88,16 @@ exports.handler = async (event) => {
   try {
     if (event.httpMethod === 'GET') {
       const type = event.queryStringParameters?.type; // '24h' or 'alltime'
+      const gameMode = event.queryStringParameters?.gameMode || 'classic'; // 'classic' or 'boss_rush'
       
       let scores;
+      
+      const tableName = gameMode === 'boss_rush' ? 'boss_rush_scores' : 'scores';
       
       if (type === '24h') {
         scores = await sql`
           SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM scores s
+          FROM ${sql(tableName)} s
           JOIN users u ON s.user_id = u.id
           WHERE s.created_at >= NOW() - INTERVAL '1 day'
           ORDER BY s.score DESC
@@ -103,7 +106,7 @@ exports.handler = async (event) => {
       } else {
         scores = await sql`
           SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM scores s
+          FROM ${sql(tableName)} s
           JOIN users u ON s.user_id = u.id
           ORDER BY s.score DESC
           LIMIT 10
@@ -118,7 +121,7 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'POST') {
-      const { token, score, wave, kills } = JSON.parse(event.body);
+      const { token, score, wave, kills, gameMode } = JSON.parse(event.body);
       
       if (!token || score === undefined) {
         return {
@@ -169,11 +172,14 @@ exports.handler = async (event) => {
       const newScore = parseInt(score);
       const newWave = parseInt(wave);
       const newKills = parseInt(kills);
+      const mode = gameMode || 'classic';
+      
+      const tableName = mode === 'boss_rush' ? 'boss_rush_scores' : 'scores';
 
-      // Check if player already has a better score
+      // Check if player already has a better score in this game mode
       const maxScores = await sql`
         SELECT MAX(score) as maxScore 
-        FROM scores 
+        FROM ${sql(tableName)} 
         WHERE user_id = ${userId}
       `;
 
@@ -188,16 +194,16 @@ exports.handler = async (event) => {
         };
       }
 
-      // Insert new score
+      // Insert new score into appropriate table
       await sql`
-        INSERT INTO scores (user_id, score, wave, kills) 
+        INSERT INTO ${sql(tableName)} (user_id, score, wave, kills) 
         VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
       `;
 
-      // Get updated leaderboard
+      // Get updated leaderboard for this game mode
       const leaderboard = await sql`
         SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-        FROM scores s
+        FROM ${sql(tableName)} s
         JOIN users u ON s.user_id = u.id
         ORDER BY s.score DESC 
         LIMIT 10

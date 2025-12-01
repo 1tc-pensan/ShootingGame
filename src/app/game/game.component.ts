@@ -335,6 +335,24 @@ interface ColorOption {
           <h2>🏆 LEADERBOARD 🏆</h2>
           <button (click)="toggleLeaderboard()" class="close-btn">✕</button>
         </div>
+        
+        <!-- Game Mode Tabs -->
+        <div class="leaderboard-mode-tabs">
+          <button 
+            class="mode-tab-btn" 
+            [class.active]="leaderboardGameMode === 'classic'"
+            (click)="switchLeaderboardGameMode('classic')">
+            🎯 CLASSIC
+          </button>
+          <button 
+            class="mode-tab-btn" 
+            [class.active]="leaderboardGameMode === 'boss_rush'"
+            (click)="switchLeaderboardGameMode('boss_rush')">
+            👹 BOSS RUSH
+          </button>
+        </div>
+        
+        <!-- Time Period Tabs -->
         <div class="leaderboard-tabs">
           <button 
             class="tab-btn" 
@@ -349,6 +367,7 @@ interface ColorOption {
             ⏳ ALL TIME
           </button>
         </div>
+        
         <div class="leaderboard-list">
           <div class="leaderboard-entry header-entry">
             <span class="rank">#</span>
@@ -359,7 +378,7 @@ interface ColorOption {
             <span class="action-col" *ngIf="authService.isAdmin"></span>
           </div>
           <div 
-            *ngFor="let entry of (leaderboardType === '24h' ? leaderboard24h : leaderboardAllTime); let i = index" 
+            *ngFor="let entry of getCurrentLeaderboard(); let i = index" 
             class="leaderboard-entry"
             [class.highlight]="entry.name === currentUsername && justSubmitted"
             [class.current-player]="entry.name.toLowerCase() === currentUsername.toLowerCase()">
@@ -1004,6 +1023,7 @@ interface ColorOption {
           <p>© 2025 Bullet Hell Survivor. All rights reserved.</p>
           <p>Made with ❤️ by <a href="https://ko-fi.com/szeretemakiflit" target="_blank">szeretemakiflit</a></p>
         </div>
+        
       </div>
     </div>
   `,
@@ -1557,6 +1577,174 @@ interface ColorOption {
       border-color: #00ff00;
       box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
       color: #000;
+    }
+    
+    .menu-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+      border-bottom: 2px solid rgba(0, 255, 0, 0.3);
+      padding-bottom: 10px;
+    }
+    
+    .menu-tab {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #00aa00;
+      color: #00ff00;
+      padding: 12px 25px;
+      border-radius: 10px 10px 0 0;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+    }
+    
+    .menu-tab:hover {
+      background: rgba(0, 255, 0, 0.2);
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+    }
+    
+    .menu-tab.active {
+      background: linear-gradient(135deg, rgba(0, 170, 0, 0.8), rgba(0, 255, 0, 0.8));
+      border-color: #00ff00;
+      color: #000;
+      box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+      border-bottom: 2px solid transparent;
+    }
+    
+    .menu-content {
+      width: 100%;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .leaderboard-menu-view {
+      max-width: 600px;
+      margin: 20px auto;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #ffaa00;
+      border-radius: 15px;
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .achievements-menu-progress {
+      text-align: center;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    
+    .achievements-menu-progress span {
+      color: #00ff00;
+      font-size: 1.2em;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 10px;
+    }
+    
+    .progress-bar-menu {
+      width: 100%;
+      height: 25px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #00ff00;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8);
+    }
+    
+    .progress-fill-menu {
+      height: 100%;
+      background: linear-gradient(90deg, #00aa00, #00ff00);
+      transition: width 0.5s ease;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+    }
+    
+    .achievements-menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .achievement-menu-card {
+      background: linear-gradient(135deg, rgba(0, 50, 0, 0.8), rgba(0, 30, 0, 0.8));
+      border: 2px solid #00ff00;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      transition: all 0.3s;
+      box-shadow: 0 5px 15px rgba(0, 255, 0, 0.3);
+    }
+    
+    .achievement-menu-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 255, 0, 0.5);
+    }
+    
+    .achievement-menu-card.locked {
+      background: linear-gradient(135deg, rgba(30, 30, 30, 0.8), rgba(20, 20, 20, 0.8));
+      border-color: #555;
+      opacity: 0.6;
+    }
+    
+    .achievement-menu-icon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+    
+    .achievement-menu-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .achievement-menu-desc {
+      font-size: 0.85em;
+      color: #aaa;
+      margin-bottom: 10px;
+      min-height: 40px;
+    }
+    
+    .achievement-menu-status {
+      margin-top: 10px;
+    }
+    
+    .unlocked-badge {
+      background: linear-gradient(135deg, #00aa00, #00ff00);
+      color: #000;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.8em;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+    }
+    
+    .locked-badge {
+      background: rgba(50, 50, 50, 0.8);
+      color: #888;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+    
+    .no-scores {
+      text-align: center;
+      color: #888;
+      font-size: 1.2em;
+      padding: 40px;
     }
     
     .instructions::-webkit-scrollbar {
@@ -2282,6 +2470,42 @@ interface ColorOption {
       margin: 0;
       font-size: 2em;
       text-shadow: 0 0 15px #ffd700;
+    }
+    
+    .leaderboard-mode-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      border-bottom: 3px solid rgba(0, 255, 0, 0.3);
+      padding-bottom: 10px;
+    }
+    
+    .mode-tab-btn {
+      flex: 1;
+      padding: 15px 25px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: 3px solid #00aa00;
+      background: rgba(0, 0, 0, 0.7);
+      color: #00ff00;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+    }
+    
+    .mode-tab-btn:hover {
+      background: rgba(0, 255, 0, 0.2);
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+    }
+    
+    .mode-tab-btn.active {
+      background: linear-gradient(135deg, rgba(0, 170, 0, 0.9), rgba(0, 255, 0, 0.9));
+      color: #000;
+      box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+      border-color: #00ff00;
     }
     
     .leaderboard-tabs {
@@ -4601,7 +4825,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   leaderboard: LeaderboardEntry[] = [];
   leaderboard24h: LeaderboardEntry[] = [];
   leaderboardAllTime: LeaderboardEntry[] = [];
+  leaderboard24hBossRush: LeaderboardEntry[] = [];
+  leaderboardAllTimeBossRush: LeaderboardEntry[] = [];
   leaderboardType: '24h' | 'alltime' = 'alltime';
+  leaderboardGameMode: 'classic' | 'boss_rush' = 'classic';
   showLeaderboard: boolean = false;
   playerName: string = '';
   playerNameSubmitted: boolean = false;
@@ -6584,16 +6811,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   loadLeaderboard() {
     console.log('Loading leaderboard from:', `${this.apiUrl}/leaderboard`);
     
-    // Load all-time leaderboard
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime`)
+    // Load Classic mode leaderboards
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime&gameMode=classic`)
       .subscribe({
         next: (data) => {
-          console.log('All-time leaderboard loaded:', data);
+          console.log('Classic all-time leaderboard loaded:', data);
           this.leaderboardAllTime = this.deduplicateLeaderboard(data).slice(0, 10);
           this.leaderboard = this.leaderboardAllTime;
         },
         error: (err) => {
-          console.error('Failed to load all-time leaderboard:', err);
+          console.error('Failed to load classic all-time leaderboard:', err);
           const saved = localStorage.getItem('bulletHellLeaderboard');
           if (saved) {
             const deduplicated = this.deduplicateLeaderboard(JSON.parse(saved));
@@ -6603,20 +6830,37 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     
-    // Load 24h leaderboard
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h`)
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h&gameMode=classic`)
       .subscribe({
         next: (data) => {
-          console.log('24h leaderboard loaded:', data);
+          console.log('Classic 24h leaderboard loaded:', data);
           this.leaderboard24h = this.deduplicateLeaderboard(data).slice(0, 10);
         },
         error: (err) => {
-          console.error('Failed to load 24h leaderboard:', err);
-          const saved = localStorage.getItem('bulletHellLeaderboard');
-          if (saved) {
-            const deduplicated = this.deduplicateLeaderboard(JSON.parse(saved));
-            this.leaderboard24h = this.filter24h(deduplicated);
-          }
+          console.error('Failed to load classic 24h leaderboard:', err);
+        }
+      });
+    
+    // Load Boss Rush mode leaderboards
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime&gameMode=boss_rush`)
+      .subscribe({
+        next: (data) => {
+          console.log('Boss Rush all-time leaderboard loaded:', data);
+          this.leaderboardAllTimeBossRush = this.deduplicateLeaderboard(data).slice(0, 10);
+        },
+        error: (err) => {
+          console.error('Failed to load boss rush all-time leaderboard:', err);
+        }
+      });
+    
+    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h&gameMode=boss_rush`)
+      .subscribe({
+        next: (data) => {
+          console.log('Boss Rush 24h leaderboard loaded:', data);
+          this.leaderboard24hBossRush = this.deduplicateLeaderboard(data).slice(0, 10);
+        },
+        error: (err) => {
+          console.error('Failed to load boss rush 24h leaderboard:', err);
         }
       });
   }
@@ -6634,6 +6878,47 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   switchLeaderboardType(type: '24h' | 'alltime') {
     this.leaderboardType = type;
+  }
+  
+  switchLeaderboardGameMode(mode: 'classic' | 'boss_rush') {
+    this.leaderboardGameMode = mode;
+    this.loadLeaderboardForMode(mode);
+  }
+  
+  getCurrentLeaderboard(): LeaderboardEntry[] {
+    if (this.leaderboardGameMode === 'boss_rush') {
+      return this.leaderboardType === '24h' ? this.leaderboard24hBossRush : this.leaderboardAllTimeBossRush;
+    } else {
+      return this.leaderboardType === '24h' ? this.leaderboard24h : this.leaderboardAllTime;
+    }
+  }
+  
+  async loadLeaderboardForMode(mode: 'classic' | 'boss_rush') {
+    try {
+      // Load 24h for this mode
+      const response24h = await fetch(`/.netlify/functions/leaderboard?type=24h&gameMode=${mode}`);
+      if (response24h.ok) {
+        const data = await response24h.json();
+        if (mode === 'boss_rush') {
+          this.leaderboard24hBossRush = data;
+        } else {
+          this.leaderboard24h = data;
+        }
+      }
+      
+      // Load all time for this mode
+      const responseAll = await fetch(`/.netlify/functions/leaderboard?type=alltime&gameMode=${mode}`);
+      if (responseAll.ok) {
+        const data = await responseAll.json();
+        if (mode === 'boss_rush') {
+          this.leaderboardAllTimeBossRush = data;
+        } else {
+          this.leaderboardAllTime = data;
+        }
+      }
+    } catch (error) {
+      console.error(`Error loading ${mode} leaderboard:`, error);
+    }
   }
   
   deduplicateLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
@@ -6677,7 +6962,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       token: token,
       score: this.score,
       wave: this.wave,
-      kills: this.kills
+      kills: this.kills,
+      gameMode: this.currentGameMode
     };
     
     console.log('Submitting score to:', `${this.apiUrl}/leaderboard`);
@@ -6691,6 +6977,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         
         // Reload full leaderboard from server
         this.loadLeaderboard();
+        
+        // Set leaderboard to show the correct game mode
+        if (this.currentGameMode === 'boss_rush' || this.currentGameMode === 'classic') {
+          this.leaderboardGameMode = this.currentGameMode;
+        }
         
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
