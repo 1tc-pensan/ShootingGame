@@ -4189,12 +4189,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'minigun',
       name: '⚡ Minigun',
       description: 'Nagyon gyors tüzelés, alacsony sebzés',
-      fireRate: 80,
+      fireRate: 110,
       bulletCount: 1,
-      bulletSpeed: 13,
+      bulletSpeed: 11,
       bulletSize: 3,
-      damage: 15,
-      spreadAngle: 0.12,
+      damage: 9,
+      spreadAngle: 0.20,
       color: '#ffff00'
     },
     {
