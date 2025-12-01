@@ -4719,11 +4719,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   selectDifficulty(diff: Difficulty) {
     this.currentDifficulty = diff;
     localStorage.setItem('selectedDifficulty', diff);
+    // Apply difficulty immediately if game is in progress
+    if (this.gameStarted && !this.isPaused) {
+      // No need to reload, changes apply dynamically
+    }
   }
   
   selectGameMode(mode: GameMode) {
     this.currentGameMode = mode;
     localStorage.setItem('selectedGameMode', mode);
+    // Apply game mode immediately if game is in progress
+    if (this.gameStarted && !this.isPaused) {
+      // No need to reload, changes apply dynamically
+    }
   }
   
   getDifficultyMultipliers() {
