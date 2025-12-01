@@ -4359,11 +4359,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     upgrade.level++;
     
     this.saveCoins(); // Saves both coins and upgrades
-    this.applyPermanentUpgrades();
     
-    // Show visual feedback
-    this.screenFlash = 0.3;
-    this.screenFlashColor = '#ffd700';
+    // Show visual feedback and success message
+    alert(`✅ ${upgrade.name} vásárlás sikeres! A fejlesztés a következő játékban aktiválódik.`);
   }
   
   applyPermanentUpgrades() {
@@ -5471,6 +5469,16 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       // Show visual notification
       this.createDamageNumber(this.canvasWidth / 2, this.canvasHeight / 2, this.skillPoints, '#ffd700');
     }
+    
+    // Award coin every 15 waves
+    if (this.wave % 15 === 0) {
+      const coinMultiplier = 1 + this.getUpgradeEffect('coinMultiplier');
+      const waveCoins = Math.floor(1 * coinMultiplier);
+      this.totalCoins += waveCoins;
+      this.saveCoins();
+      // Show visual notification with coin symbol
+      this.createDamageNumber(this.canvasWidth / 2, this.canvasHeight / 2 + 40, waveCoins, '#ffd700');
+    }
   }
   
   spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
@@ -5769,20 +5777,6 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               
               const diffMultipliers = this.getDifficultyMultipliers();
               this.score += Math.floor(baseScore * this.combo.multiplier * diffMultipliers.scoreBonus);
-              
-              // Coin drop
-              const baseCoinValue = enemy.type.startsWith('boss') ? 50 : 
-                                   enemy.type === 'miniboss' ? 15 :
-                                   enemy.type === 'tank' ? 5 : 
-                                   enemy.type === 'shooter' ? 3 : 
-                                   enemy.type === 'healer' ? 4 :
-                                   enemy.type === 'exploder' ? 2 :
-                                   enemy.type === 'dodger' ? 3 :
-                                   enemy.type === 'fast' ? 2 : 1;
-              const coinMultiplier = 1 + this.getUpgradeEffect('coinMultiplier');
-              const finalCoins = Math.floor(baseCoinValue * coinMultiplier);
-              this.totalCoins += finalCoins;
-              this.saveCoins();
               
               this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0000', 20);
               
