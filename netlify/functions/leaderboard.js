@@ -92,25 +92,44 @@ exports.handler = async (event) => {
       
       let scores;
       
-      const tableName = gameMode === 'boss_rush' ? 'boss_rush_scores' : 'scores';
-      
-      if (type === '24h') {
-        scores = await sql`
-          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM ${sql(tableName)} s
-          JOIN users u ON s.user_id = u.id
-          WHERE s.created_at >= NOW() - INTERVAL '1 day'
-          ORDER BY s.score DESC
-          LIMIT 10
-        `;
+      if (gameMode === 'boss_rush') {
+        if (type === '24h') {
+          scores = await sql`
+            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+            FROM boss_rush_scores s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.created_at >= NOW() - INTERVAL '1 day'
+            ORDER BY s.score DESC
+            LIMIT 10
+          `;
+        } else {
+          scores = await sql`
+            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+            FROM boss_rush_scores s
+            JOIN users u ON s.user_id = u.id
+            ORDER BY s.score DESC
+            LIMIT 10
+          `;
+        }
       } else {
-        scores = await sql`
-          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM ${sql(tableName)} s
-          JOIN users u ON s.user_id = u.id
-          ORDER BY s.score DESC
-          LIMIT 10
-        `;
+        if (type === '24h') {
+          scores = await sql`
+            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+            FROM scores s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.created_at >= NOW() - INTERVAL '1 day'
+            ORDER BY s.score DESC
+            LIMIT 10
+          `;
+        } else {
+          scores = await sql`
+            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+            FROM scores s
+            JOIN users u ON s.user_id = u.id
+            ORDER BY s.score DESC
+            LIMIT 10
+          `;
+        }
       }
       
       return {
@@ -173,50 +192,91 @@ exports.handler = async (event) => {
       const newWave = parseInt(wave);
       const newKills = parseInt(kills);
       const mode = gameMode || 'classic';
-      
-      const tableName = mode === 'boss_rush' ? 'boss_rush_scores' : 'scores';
 
       // Check if player already has a better score in this game mode
-      const maxScores = await sql`
-        SELECT MAX(score) as maxScore 
-        FROM ${sql(tableName)} 
-        WHERE user_id = ${userId}
-      `;
+      if (mode === 'boss_rush') {
+        const maxScores = await sql`
+          SELECT MAX(score) as maxScore 
+          FROM boss_rush_scores 
+          WHERE user_id = ${userId}
+        `;
 
-      if (maxScores[0] && maxScores[0].maxscore >= newScore) {
+        if (maxScores[0] && maxScores[0].maxscore >= newScore) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ 
+              error: 'You already have a better score',
+              existingScore: maxScores[0].maxscore 
+            })
+          };
+        }
+
+        // Insert new score into boss rush table
+        await sql`
+          INSERT INTO boss_rush_scores (user_id, score, wave, kills) 
+          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
+        `;
+
+        // Get updated leaderboard for boss rush
+        const leaderboard = await sql`
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM boss_rush_scores s
+          JOIN users u ON s.user_id = u.id
+          ORDER BY s.score DESC 
+          LIMIT 10
+        `;
+
         return {
-          statusCode: 400,
+          statusCode: 200,
           headers,
           body: JSON.stringify({ 
-            error: 'You already have a better score',
-            existingScore: maxScores[0].maxscore 
+            success: true, 
+            leaderboard: leaderboard 
+          })
+        };
+      } else {
+        const maxScores = await sql`
+          SELECT MAX(score) as maxScore 
+          FROM scores 
+          WHERE user_id = ${userId}
+        `;
+
+        if (maxScores[0] && maxScores[0].maxscore >= newScore) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ 
+              error: 'You already have a better score',
+              existingScore: maxScores[0].maxscore 
+            })
+          };
+        }
+
+        // Insert new score into classic table
+        await sql`
+          INSERT INTO scores (user_id, score, wave, kills) 
+          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
+        `;
+
+        // Get updated leaderboard for classic
+        const leaderboard = await sql`
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM scores s
+          JOIN users u ON s.user_id = u.id
+          ORDER BY s.score DESC 
+          LIMIT 10
+        `;
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            success: true, 
+            leaderboard: leaderboard 
           })
         };
       }
-
-      // Insert new score into appropriate table
-      await sql`
-        INSERT INTO ${sql(tableName)} (user_id, score, wave, kills) 
-        VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
-      `;
-
-      // Get updated leaderboard for this game mode
-      const leaderboard = await sql`
-        SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-        FROM ${sql(tableName)} s
-        JOIN users u ON s.user_id = u.id
-        ORDER BY s.score DESC 
-        LIMIT 10
-      `;
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          success: true, 
-          leaderboard: leaderboard 
-        })
-      };
     }
 
     return {
