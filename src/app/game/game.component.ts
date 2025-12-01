@@ -408,7 +408,7 @@ interface ColorOption {
       </div>
 
       <!-- Change Password Modal -->
-      <div class="edit-score-modal" *ngIf="showChangePasswordModal && authService.isAdmin">
+      <div class="edit-score-modal" *ngIf="showPasswordChangeModal && authService.isAdmin">
         <div class="edit-score-content">
           <h2>🔑 Change Password</h2>
           <div class="edit-form">
@@ -697,7 +697,7 @@ interface ColorOption {
                 </div>
                 <div class="user-actions">
                   <button 
-                    (click)="showChangePasswordModal(user)" 
+                    (click)="openChangePasswordModal(user)" 
                     class="change-pass-btn">
                     🔑 Change Password
                   </button>
@@ -4542,7 +4542,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   globalAnnouncement: string = '';
   
   // Change Password Modal
-  showChangePasswordModal: boolean = false;
+  showPasswordChangeModal: boolean = false;
   changingPasswordUser: any = null;
   newPasswordInput: string = '';
   
@@ -7667,14 +7667,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
   
-  showChangePasswordModal(user: any) {
+  openChangePasswordModal(user: any) {
     this.changingPasswordUser = user;
     this.newPasswordInput = '';
-    this.showChangePasswordModal = true;
+    this.showPasswordChangeModal = true;
   }
   
   closeChangePasswordModal() {
-    this.showChangePasswordModal = false;
+    this.showPasswordChangeModal = false;
     this.changingPasswordUser = null;
     this.newPasswordInput = '';
   }
