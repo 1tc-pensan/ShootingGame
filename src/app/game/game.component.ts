@@ -5285,11 +5285,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   restart() {
+    // Reset to menu instead of restarting immediately
+    this.gameStarted = false;
+    this.gameOver = false;
     this.adWatched = false;
     this.adTimer = 5;
+    this.playerNameSubmitted = false;
     const adElement = document.getElementById('ad-interstitial');
-    if (adElement) adElement.style.display = 'flex';
-    this.startGame();
+    if (adElement) adElement.style.display = 'none';
   }
   
   gameLoop() {
