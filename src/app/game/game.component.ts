@@ -5803,28 +5803,36 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                                      this.player.x, this.player.y, 
                                      this.player.width, this.player.height)) {
           if (this.player.invulnerable === 0) {
-            // Shield chance from permanent upgrade
-            const shieldChance = this.getUpgradeEffect('shieldChance');
-            const hasShieldProc = Math.random() < shieldChance;
-            
-            if (hasShieldProc) {
-              this.createDamageNumber(this.player.x, this.player.y, 0, '#00ffff');
-              this.createParticles(bullet.x, bullet.y, '#00ffff', 15);
+            // Shield power-up blocks all damage
+            if (this.hasShield) {
+              this.createDamageNumber(this.player.x, this.player.y, 0, '#8a2be2');
+              this.createParticles(bullet.x, bullet.y, '#8a2be2', 15);
               this.screenFlash = 0.2;
-              this.screenFlashColor = '#00ffff';
+              this.screenFlashColor = '#8a2be2';
             } else {
-              // Dodge chance
-              const dodgeChance = this.getSkillValue('dodge') / 100;
-              const dodged = Math.random() < dodgeChance;
+              // Shield chance from permanent upgrade
+              const shieldChance = this.getUpgradeEffect('shieldChance');
+              const hasShieldProc = Math.random() < shieldChance;
               
-              if (dodged) {
-                this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
-                this.createParticles(bullet.x, bullet.y, '#00ddff', 10);
+              if (hasShieldProc) {
+                this.createDamageNumber(this.player.x, this.player.y, 0, '#00ffff');
+                this.createParticles(bullet.x, bullet.y, '#00ffff', 15);
+                this.screenFlash = 0.2;
+                this.screenFlashColor = '#00ffff';
               } else {
-                this.player.health -= bullet.damage;
-                this.player.invulnerable = 60;
-                this.waveDamageTaken = true;
-                this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+                // Dodge chance
+                const dodgeChance = this.getSkillValue('dodge') / 100;
+                const dodged = Math.random() < dodgeChance;
+                
+                if (dodged) {
+                  this.createDamageNumber(this.player.x, this.player.y, 0, '#00ddff');
+                  this.createParticles(bullet.x, bullet.y, '#00ddff', 10);
+                } else {
+                  this.player.health -= bullet.damage;
+                  this.player.invulnerable = 60;
+                  this.waveDamageTaken = true;
+                  this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
+                }
               }
             }
           }
