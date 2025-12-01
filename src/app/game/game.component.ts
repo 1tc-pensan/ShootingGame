@@ -938,6 +938,30 @@ interface ColorOption {
           <p *ngIf="language === 'en'"><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
         </div>
         
+        <div class="gamemode-selection">
+          <h2 *ngIf="language === 'hu'">🎮 Válassz Játékmódot!</h2>
+          <h2 *ngIf="language === 'en'">🎮 Choose Game Mode!</h2>
+          <div class="gamemode-grid">
+            <button (click)="selectGameMode('classic')" 
+                    [class.selected]="currentGameMode === 'classic'"
+                    class="gamemode-card">
+              <div class="gamemode-icon">🎯</div>
+              <div class="gamemode-name" *ngIf="language === 'hu'">Klasszikus</div>
+              <div class="gamemode-name" *ngIf="language === 'en'">Classic</div>
+              <div class="gamemode-desc" *ngIf="language === 'hu'">Boss minden 5. hullámban</div>
+              <div class="gamemode-desc" *ngIf="language === 'en'">Boss every 5 waves</div>
+            </button>
+            <button (click)="selectGameMode('boss_rush')" 
+                    [class.selected]="currentGameMode === 'boss_rush'"
+                    class="gamemode-card">
+              <div class="gamemode-icon">👹</div>
+              <div class="gamemode-name">Boss Rush</div>
+              <div class="gamemode-desc" *ngIf="language === 'hu'">Csak bossok folyamatosan!</div>
+              <div class="gamemode-desc" *ngIf="language === 'en'">Non-stop bosses only!</div>
+            </button>
+          </div>
+        </div>
+        
         <div class="difficulty-selection">
           <h2 *ngIf="language === 'hu'">⚔️ Válassz Nehézséget!</h2>
           <h2 *ngIf="language === 'en'">⚔️ Choose Difficulty!</h2>
@@ -1612,6 +1636,72 @@ interface ColorOption {
     .enemy-tank { color: #ffaa00; }
     .enemy-shooter { color: #ff0000; }
     .enemy-boss { color: #ff0000; font-size: 1.5em; }
+    
+    .gamemode-selection {
+      margin: 30px 0;
+      width: 100%;
+      max-width: 900px;
+    }
+    
+    .gamemode-selection h2 {
+      color: #00ff00;
+      text-align: center;
+      font-size: 2em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #00ff00;
+    }
+    
+    .gamemode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    
+    .gamemode-card {
+      background: linear-gradient(135deg, rgba(10, 10, 30, 0.9), rgba(20, 10, 30, 0.9));
+      border: 3px solid #00aa00;
+      border-radius: 15px;
+      padding: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0, 170, 0, 0.2);
+    }
+    
+    .gamemode-card:hover {
+      border-color: #00ff00;
+      box-shadow: 0 8px 25px rgba(0, 255, 0, 0.4);
+      transform: translateY(-5px) scale(1.02);
+      background: linear-gradient(135deg, rgba(15, 15, 40, 0.95), rgba(25, 15, 40, 0.95));
+    }
+    
+    .gamemode-card.selected {
+      border-color: #00ffff;
+      background: linear-gradient(135deg, rgba(0, 30, 40, 0.9), rgba(0, 20, 30, 0.9));
+      box-shadow: 0 10px 35px rgba(0, 255, 255, 0.6);
+      transform: scale(1.05);
+    }
+    
+    .gamemode-icon {
+      font-size: 4em;
+      margin-bottom: 15px;
+    }
+    
+    .gamemode-name {
+      font-size: 1.6em;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    
+    .gamemode-desc {
+      color: #aaa;
+      font-size: 1em;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
     
     .difficulty-selection {
       margin: 30px 0;
@@ -4319,6 +4409,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     localStorage.setItem('selectedDifficulty', diff);
   }
   
+  selectGameMode(mode: GameMode) {
+    this.currentGameMode = mode;
+    localStorage.setItem('selectedGameMode', mode);
+  }
+  
   getDifficultyMultipliers() {
     const multipliers = {
       'easy': { enemyHP: 0.7, enemySpeed: 0.9, enemyDamage: 0.8, scoreBonus: 0.8 },
@@ -4630,6 +4725,11 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const saved = localStorage.getItem('selectedDifficulty');
     if (saved && ['easy', 'normal', 'hard', 'nightmare'].includes(saved)) {
       this.currentDifficulty = saved as Difficulty;
+    }
+    
+    const savedMode = localStorage.getItem('selectedGameMode');
+    if (savedMode && ['classic', 'survival', 'boss_rush', 'time_attack'].includes(savedMode)) {
+      this.currentGameMode = savedMode as GameMode;
     }
   }
   
@@ -5396,6 +5496,22 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.waveSpawnTimer < 120) return;
     
     this.waveSpawnTimer = 0;
+    
+    // Boss Rush mode: Every wave is a boss
+    if (this.currentGameMode === 'boss_rush') {
+      this.bossWarning = 180;
+      this.bossWarningTimer = 0;
+      
+      setTimeout(() => {
+        this.spawnBoss();
+        this.screenFlash = 1.0;
+        this.screenFlashColor = '#ff0000';
+        this.screenShake = 40;
+      }, 3000);
+      
+      this.bossSpawned = true;
+      return;
+    }
     
     // Boss every 5 waves
     if (this.wave % 5 === 0 && !this.bossSpawned) {
