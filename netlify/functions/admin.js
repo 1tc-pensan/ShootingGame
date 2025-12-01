@@ -398,6 +398,29 @@ exports.handler = async (event) => {
       };
     }
 
+    // RESET ALL SHOP PROGRESS
+    if (action === 'resetAllShopProgress') {
+      // Reset coins and permanent upgrades for all users
+      const result = await sql`
+        UPDATE users 
+        SET coins = 0, 
+            permanent_upgrades = '[]'
+        WHERE id > 0
+      `;
+      
+      const affectedRows = result.count || 0;
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          success: true, 
+          message: `Shop progress reset for ${affectedRows} users. All coins and upgrades cleared.`,
+          affectedUsers: affectedRows
+        })
+      };
+    }
+
     return {
       statusCode: 400,
       headers,

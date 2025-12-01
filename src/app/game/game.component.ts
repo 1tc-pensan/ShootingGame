@@ -651,6 +651,12 @@ interface ColorOption {
             (click)="adminTab = 'announce'">
             📢 ANNOUNCE
           </button>
+          <button 
+            class="admin-tab-btn" 
+            [class.active]="adminTab === 'actions'"
+            (click)="adminTab = 'actions'">
+            ⚡ ACTIONS
+          </button>
         </div>
         
         <div class="admin-content">
@@ -741,6 +747,23 @@ interface ColorOption {
             <div class="announce-buttons">
               <button (click)="setAnnouncement()" class="set-announce-btn">📢 SET ANNOUNCEMENT</button>
               <button (click)="clearAnnouncement()" class="clear-announce-btn">❌ CLEAR</button>
+            </div>
+          </div>
+          
+          <!-- Actions Tab -->
+          <div *ngIf="adminTab === 'actions'" class="admin-actions">
+            <h3>⚡ Admin Actions</h3>
+            <div class="action-section">
+              <div class="action-card danger-action">
+                <div class="action-icon">💰</div>
+                <div class="action-info">
+                  <h4>Reset All Shop Progress</h4>
+                  <p>This will reset coins and permanent upgrades for ALL users. This action cannot be undone!</p>
+                </div>
+                <button (click)="resetAllShopProgress()" class="danger-btn">
+                  🗑️ RESET ALL SHOP DATA
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4043,6 +4066,71 @@ interface ColorOption {
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
     }
     
+    .admin-actions {
+      padding: 20px;
+    }
+    
+    .action-section {
+      margin-top: 20px;
+    }
+    
+    .action-card {
+      background: rgba(20, 20, 40, 0.9);
+      border: 2px solid #666;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .action-card.danger-action {
+      border-color: #ff0000;
+      background: linear-gradient(135deg, rgba(80, 0, 0, 0.8), rgba(40, 0, 0, 0.8));
+    }
+    
+    .action-icon {
+      font-size: 3em;
+      flex-shrink: 0;
+    }
+    
+    .action-info {
+      flex: 1;
+    }
+    
+    .action-info h4 {
+      margin: 0 0 8px 0;
+      color: #ff6600;
+      font-size: 1.3em;
+    }
+    
+    .action-info p {
+      margin: 0;
+      color: #aaa;
+      font-size: 0.9em;
+    }
+    
+    .danger-btn {
+      padding: 15px 30px;
+      font-size: 1.1em;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff0000, #cc0000);
+      color: #fff;
+      border: 2px solid #ff0000;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+    }
+    
+    .danger-btn:hover {
+      background: linear-gradient(135deg, #ff3333, #ff0000);
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+    }
+    
     .announcement-banner {
       position: fixed;
       top: 0;
@@ -4848,7 +4936,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   // Admin properties
   showAdminPanel: boolean = false;
-  adminTab: 'stats' | 'users' | 'announce' = 'stats';
+  adminTab: 'stats' | 'users' | 'announce' | 'actions' = 'stats';
   adminStats: any = {
     totalUsers: 0,
     totalScores: 0,
@@ -7993,6 +8081,35 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     .catch(err => {
       console.error('Failed to set announcement:', err);
       alert('❌ Hiba az üzenet beállításakor!');
+    });
+  }
+  
+  resetAllShopProgress() {
+    const confirm = window.confirm('⚠️ FIGYELEM! Ez törli az ÖSSZES felhasználó érméit és fejlesztéseit! Biztosan folytatod?');
+    if (!confirm) return;
+    
+    const doubleConfirm = window.confirm('🚨 UTOLSÓ FIGYELMEZTETÉS! Ez a művelet visszavonhatatlan! Tényleg törölni akarod mindenki bolt adatát?');
+    if (!doubleConfirm) return;
+    
+    const token = this.authService.getToken();
+    if (!token) return;
+    
+    fetch('/.netlify/functions/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resetAllShopProgress', token })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Sikeres reset! ${data.affectedUsers} felhasználó bolt adatai törölve.`);
+      } else {
+        alert('❌ Hiba történt: ' + (data.error || 'Ismeretlen hiba'));
+      }
+    })
+    .catch(err => {
+      console.error('Failed to reset shop progress:', err);
+      alert('❌ Hiba a shop reset során!');
     });
   }
   
