@@ -50,6 +50,7 @@ async function initDB() {
         score INTEGER NOT NULL,
         wave INTEGER NOT NULL,
         kills INTEGER NOT NULL,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
@@ -74,6 +75,7 @@ async function initDB() {
         score INTEGER NOT NULL,
         wave INTEGER NOT NULL,
         kills INTEGER NOT NULL,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
