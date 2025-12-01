@@ -401,14 +401,19 @@ exports.handler = async (event) => {
     // RESET ALL SHOP PROGRESS
     if (action === 'resetAllShopProgress') {
       // Reset coins and permanent upgrades for all users
-      const result = await sql`
+      await sql`
         UPDATE users 
         SET coins = 0, 
             permanent_upgrades = '[]'
         WHERE id > 0
       `;
       
-      const affectedRows = result.count || 0;
+      // Get count of affected users
+      const countResult = await sql`
+        SELECT COUNT(*) as total FROM users WHERE id > 0
+      `;
+      
+      const affectedRows = countResult[0]?.total || 0;
 
       return {
         statusCode: 200,
