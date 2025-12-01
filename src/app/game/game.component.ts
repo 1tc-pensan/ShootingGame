@@ -312,20 +312,6 @@ interface ColorOption {
         <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'en'">
           📺 Watch Ad to Continue
         </button>
-        <div class="weapon-selector-gameover">
-          <h3 *ngIf="language === 'hu'">🔫 VÁLASSZ FEGYVERT</h3>
-          <h3 *ngIf="language === 'en'">🔫 SELECT WEAPON</h3>
-          <div class="weapon-options">
-            <div 
-              *ngFor="let weapon of weapons" 
-              class="weapon-option"
-              [class.selected]="currentWeapon.id === weapon.id"
-              (click)="selectWeapon(weapon)">
-              <div class="weapon-icon">{{ weapon.id === 'pistol' ? '🔫' : weapon.id === 'shotgun' ? '💥' : weapon.id === 'rifle' ? '🎯' : weapon.id === 'minigun' ? '⚡' : weapon.id === 'burst' ? '💫' : '🎪' }}</div>
-              <div class="weapon-name">{{ getWeaponName(weapon.id) }}</div>
-            </div>
-          </div>
-        </div>
         <button (click)="restart()" class="restart-btn" *ngIf="language === 'hu'">UJRAINDÍTÁS</button>
         <button (click)="restart()" class="restart-btn" *ngIf="language === 'en'">RESTART</button>
       </div>
