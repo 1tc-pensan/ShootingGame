@@ -56,11 +56,13 @@ interface Enemy {
   health: number;
   maxHealth: number;
   speed: number;
-  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper' | 'healer' | 'exploder' | 'dodger' | 'miniboss';
+  type: 'basic' | 'fast' | 'tank' | 'shooter' | 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper' | 'boss_summoner' | 'boss_bomber' | 'boss_healer' | 'boss_berserker' | 'healer' | 'exploder' | 'dodger' | 'miniboss';
   shootTimer: number;
   movePattern: number;
-  bossType?: 'normal' | 'tank' | 'speed' | 'sniper';
+  bossType?: 'normal' | 'tank' | 'speed' | 'sniper' | 'summoner' | 'bomber' | 'healer' | 'berserker';
   dodgeTimer?: number;
+  summonTimer?: number;
+  healTimer?: number;
 }
 
 interface Particle {
@@ -6057,7 +6059,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   
-  spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper'>) {
+  spawnEnemy(type: Exclude<Enemy['type'], 'boss' | 'boss_tank' | 'boss_speed' | 'boss_sniper' | 'boss_summoner' | 'boss_bomber' | 'boss_healer' | 'boss_berserker'>) {
     const configs = {
       basic: { width: 30, height: 30, health: 70, speed: 1.2 },
       fast: { width: 25, height: 25, health: 45, speed: 2.5 },
