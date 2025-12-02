@@ -5551,6 +5551,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'boss_tank':
       case 'boss_speed':
       case 'boss_sniper':
+      case 'boss_summoner':
+      case 'boss_bomber':
+      case 'boss_healer':
+      case 'boss_berserker':
         // Different movement patterns for different boss types
         if (enemy.type === 'boss_tank') {
           // Tank boss: Slow vertical movement, stays at top
@@ -5577,6 +5581,61 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             enemy.x = Math.random() * (this.canvasWidth - enemy.width);
             this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff00ff', 30);
           }
+        } else if (enemy.type === 'boss_summoner') {
+          // Summoner boss: Slow movement, spawns minions
+          enemy.movePattern += 0.03;
+          enemy.x += Math.cos(enemy.movePattern) * 1.2;
+          enemy.y = Math.min(160, enemy.y + 0.4);
+          
+          // Spawn minions
+          if (!enemy.summonTimer) enemy.summonTimer = 0;
+          enemy.summonTimer++;
+          if (enemy.summonTimer > 180) {
+            // Spawn 2 basic enemies near boss
+            for (let i = 0; i < 2; i++) {
+              this.enemies.push({
+                x: enemy.x + (i * 80) - 40,
+                y: enemy.y + 50,
+                width: 40,
+                height: 40,
+                health: 50,
+                maxHealth: 50,
+                speed: 1.5,
+                type: 'basic',
+                shootTimer: 0,
+                movePattern: 0
+              });
+            }
+            this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#9400d3', 25);
+            enemy.summonTimer = 0;
+          }
+        } else if (enemy.type === 'boss_bomber') {
+          // Bomber boss: Moderate movement, explosive attacks
+          enemy.movePattern += 0.04;
+          enemy.x += Math.cos(enemy.movePattern) * 2;
+          enemy.y = Math.min(170, enemy.y + 0.5);
+        } else if (enemy.type === 'boss_healer') {
+          // Healer boss: Slow, regenerates health
+          enemy.movePattern += 0.025;
+          enemy.x += Math.cos(enemy.movePattern) * 1;
+          enemy.y = Math.min(165, enemy.y + 0.35);
+          
+          // Heal self over time
+          if (!enemy.healTimer) enemy.healTimer = 0;
+          enemy.healTimer++;
+          if (enemy.healTimer > 120) {
+            const healAmount = enemy.maxHealth * 0.02; // 2% max HP
+            enemy.health = Math.min(enemy.maxHealth, enemy.health + healAmount);
+            this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#00ff88', 15);
+            enemy.healTimer = 0;
+          }
+        } else if (enemy.type === 'boss_berserker') {
+          // Berserker boss: Gets faster as HP drops
+          const hpPercent = enemy.health / enemy.maxHealth;
+          const speedBoost = 1 + (1 - hpPercent) * 2; // Up to 3x speed at low HP
+          enemy.movePattern += 0.03 * speedBoost;
+          enemy.x += Math.cos(enemy.movePattern) * 1.5 * speedBoost;
+          enemy.y = Math.min(175, enemy.y + 0.4 * speedBoost);
         } else {
           // Normal boss: Circular pattern
           enemy.movePattern += 0.03;
@@ -5595,6 +5654,15 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           shootInterval = rageMode ? 10 : 15;
         } else if (enemy.type === 'boss_sniper') {
           shootInterval = rageMode ? 35 : 50;
+        } else if (enemy.type === 'boss_summoner') {
+          shootInterval = rageMode ? 25 : 40;
+        } else if (enemy.type === 'boss_bomber') {
+          shootInterval = rageMode ? 45 : 70;
+        } else if (enemy.type === 'boss_healer') {
+          shootInterval = rageMode ? 30 : 45;
+        } else if (enemy.type === 'boss_berserker') {
+          const hpPercent = enemy.health / enemy.maxHealth;
+          shootInterval = Math.max(10, Math.floor(40 * hpPercent)); // Faster as HP drops
         } else {
           shootInterval = rageMode ? 20 : 30;
         }
@@ -5744,6 +5812,86 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           vy: Math.sin(angle) * 8,
           radius: 4,
           damage: 30,
+          fromPlayer: false
+        });
+      }
+    } else if (enemy.type === 'boss_summoner') {
+      // Summoner: Homing orbs
+      const orbCount = rageMode ? 4 : 2;
+      for (let i = 0; i < orbCount; i++) {
+        const angle = (Math.PI * 2 * i) / orbCount + enemy.movePattern;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 3,
+          vy: Math.sin(angle) * 3,
+          radius: 7,
+          damage: 22,
+          fromPlayer: false
+        });
+      }
+    } else if (enemy.type === 'boss_bomber') {
+      // Bomber: Large explosive bullets
+      const playerDx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+      const playerDy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+      const angle = Math.atan2(playerDy, playerDx);
+      
+      // Main bomb
+      this.bullets.push({
+        x: enemy.x + enemy.width / 2,
+        y: enemy.y + enemy.height / 2,
+        vx: Math.cos(angle) * 2.5,
+        vy: Math.sin(angle) * 2.5,
+        radius: 12,
+        damage: 40,
+        fromPlayer: false
+      });
+      
+      // Shrapnel in rage mode
+      if (rageMode) {
+        for (let i = 0; i < 6; i++) {
+          const shrapAngle = angle + (i - 2.5) * 0.4;
+          this.bullets.push({
+            x: enemy.x + enemy.width / 2,
+            y: enemy.y + enemy.height / 2,
+            vx: Math.cos(shrapAngle) * 3.5,
+            vy: Math.sin(shrapAngle) * 3.5,
+            radius: 5,
+            damage: 18,
+            fromPlayer: false
+          });
+        }
+      }
+    } else if (enemy.type === 'boss_healer') {
+      // Healer: Spiral pattern
+      const spiralCount = rageMode ? 12 : 8;
+      for (let i = 0; i < spiralCount; i++) {
+        const angle = (Math.PI * 2 * i) / spiralCount + enemy.movePattern * 2;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * 2.5,
+          vy: Math.sin(angle) * 2.5,
+          radius: 6,
+          damage: 18,
+          fromPlayer: false
+        });
+      }
+    } else if (enemy.type === 'boss_berserker') {
+      // Berserker: Chaotic spray that gets denser at low HP
+      const hpPercent = enemy.health / enemy.maxHealth;
+      const bulletCount = Math.floor(8 + (1 - hpPercent) * 16); // 8-24 bullets
+      
+      for (let i = 0; i < bulletCount; i++) {
+        const angle = (Math.PI * 2 * i) / bulletCount + Math.random() * 0.3;
+        const speed = 2.5 + Math.random() * 2;
+        this.bullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: 7,
+          damage: 20 + Math.floor((1 - hpPercent) * 15), // More damage at low HP
           fromPlayer: false
         });
       }
@@ -5967,8 +6115,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     const healthScale = 1 + bossIteration * 1.2; // +120% HP per boss iteration (was 80%)
     const baseHealth = 1500; // Increased from 1000
     
-    // Random boss type
-    const bossTypes = ['normal', 'tank', 'speed', 'sniper'] as const;
+    // Random boss type with more variety
+    const bossTypes = ['normal', 'tank', 'speed', 'sniper', 'summoner', 'bomber', 'healer', 'berserker'] as const;
     const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
     
     let boss: Enemy;
@@ -6017,6 +6165,68 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         shootTimer: 0,
         movePattern: 0,
         bossType: 'sniper'
+      };
+    } else if (bossType === 'summoner') {
+      // Summoner Boss: Spawns minions, medium HP, slow
+      boss = {
+        x: this.canvasWidth / 2 - 85,
+        y: -170,
+        width: 170,
+        height: 170,
+        health: Math.floor(baseHealth * healthScale * 1.3 + this.wave * 110),
+        maxHealth: Math.floor(baseHealth * healthScale * 1.3 + this.wave * 110),
+        speed: 0.4,
+        type: 'boss_summoner',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'summoner',
+        summonTimer: 0
+      };
+    } else if (bossType === 'bomber') {
+      // Bomber Boss: Explosive attacks, medium-high HP
+      boss = {
+        x: this.canvasWidth / 2 - 90,
+        y: -180,
+        width: 180,
+        height: 180,
+        health: Math.floor(baseHealth * healthScale * 1.5 + this.wave * 120),
+        maxHealth: Math.floor(baseHealth * healthScale * 1.5 + this.wave * 120),
+        speed: 0.6,
+        type: 'boss_bomber',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'bomber'
+      };
+    } else if (bossType === 'healer') {
+      // Healer Boss: Regenerates health, medium HP
+      boss = {
+        x: this.canvasWidth / 2 - 80,
+        y: -160,
+        width: 160,
+        height: 160,
+        health: Math.floor(baseHealth * healthScale * 1.4 + this.wave * 105),
+        maxHealth: Math.floor(baseHealth * healthScale * 1.4 + this.wave * 105),
+        speed: 0.55,
+        type: 'boss_healer',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'healer',
+        healTimer: 0
+      };
+    } else if (bossType === 'berserker') {
+      // Berserker Boss: Gets faster and stronger as HP drops
+      boss = {
+        x: this.canvasWidth / 2 - 95,
+        y: -190,
+        width: 190,
+        height: 190,
+        health: Math.floor(baseHealth * healthScale * 1.8 + this.wave * 130),
+        maxHealth: Math.floor(baseHealth * healthScale * 1.8 + this.wave * 130),
+        speed: 0.5,
+        type: 'boss_berserker',
+        shootTimer: 0,
+        movePattern: 0,
+        bossType: 'berserker'
       };
     } else {
       // Normal Boss: Balanced
@@ -6750,6 +6960,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         boss_tank: '#ff8800',
         boss_speed: '#00ffff',
         boss_sniper: '#ff00ff',
+        boss_summoner: '#9400d3',
+        boss_bomber: '#ff4500',
+        boss_healer: '#00ff88',
+        boss_berserker: '#8b0000',
         healer: '#00ff88',
         exploder: '#ff6600',
         dodger: '#8888ff',
@@ -6781,6 +6995,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           boss_tank: '🛡️ TANK BOSS',
           boss_speed: '⚡ SPEED BOSS',
           boss_sniper: '🎯 SNIPER BOSS',
+          boss_summoner: '🔮 SUMMONER',
+          boss_bomber: '💣 BOMBER',
+          boss_healer: '💚 HEALER',
+          boss_berserker: '😡 BERSERKER',
           miniboss: '⚔️ MINI BOSS'
         };
         
