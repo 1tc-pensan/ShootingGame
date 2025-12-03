@@ -4547,7 +4547,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 1,
       bulletSpeed: 12,
       bulletSize: 4,
-      damage: 30,
+      damage: 35,
       spreadAngle: 0,
       color: '#00ffff'
     },
@@ -4559,7 +4559,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 7,
       bulletSpeed: 9,
       bulletSize: 3,
-      damage: 18,
+      damage: 20,
       spreadAngle: 0.35,
       color: '#ff8800'
     },
@@ -4571,7 +4571,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 1,
       bulletSpeed: 16,
       bulletSize: 5,
-      damage: 70,
+      damage: 75,
       spreadAngle: 0,
       color: '#ff00ff'
     },
@@ -4583,7 +4583,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 1,
       bulletSpeed: 11,
       bulletSize: 3,
-      damage: 9,
+      damage: 15,
       spreadAngle: 0.20,
       color: '#ffff00'
     },
@@ -4595,7 +4595,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 3,
       bulletSpeed: 14,
       bulletSize: 4,
-      damage: 35,
+      damage: 40,
       spreadAngle: 0.12,
       color: '#00ff88'
     },
@@ -4607,7 +4607,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       bulletCount: 1,
       bulletSpeed: 22,
       bulletSize: 6,
-      damage: 180,
+      damage: 200,
       spreadAngle: 0,
       color: '#ff0088'
     }
