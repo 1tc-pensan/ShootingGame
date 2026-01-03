@@ -57,3 +57,27 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Local server (leaderboard API)
+
+This repo contains a small Express API in the `server` folder. It will use PostgreSQL when a `DATABASE_URL` environment variable is present, otherwise it falls back to file-based storage.
+
+1. Create a `.env` in the project root with `DATABASE_URL` (do not commit this file).
+
+2. Start the API server:
+
+```bash
+cd server
+npm install
+npm start
+```
+
+3. Start the frontend (Angular dev server):
+
+```bash
+# from project root
+npm install
+npm start
+```
+
+The frontend will run on `http://localhost:4200` and the API on `http://localhost:3000` by default.
