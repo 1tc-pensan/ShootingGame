@@ -35,6 +35,7 @@ async function initDB() {
         email VARCHAR(100) UNIQUE,
         coins INTEGER DEFAULT 0,
         permanent_upgrades TEXT DEFAULT '[]',
+        is_admin BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -42,6 +43,13 @@ async function initDB() {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_username ON users(username)
     `;
+
+    // Ensure legacy databases get the is_admin column
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`;
+    } catch (e) {
+      // Non-fatal: some Postgres versions might not support IF NOT EXISTS, ignore errors
+    }
 
     await sql`
       CREATE TABLE IF NOT EXISTS scores (

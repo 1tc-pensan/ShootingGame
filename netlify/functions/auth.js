@@ -145,12 +145,12 @@ exports.handler = async (event) => {
         const result = await sql`
           INSERT INTO users (username, password, email) 
           VALUES (${cleanUsername.toLowerCase()}, ${hashedPassword}, ${cleanEmail})
-          RETURNING id, username
+          RETURNING id, username, is_admin
         `;
 
         const user = result[0];
         const sessionToken = generateToken();
-        const isAdmin = user.id === 1;
+        const isAdmin = (user.is_admin === true) || user.id === 1;
 
         // Store session in database
         await sql`
@@ -204,7 +204,7 @@ exports.handler = async (event) => {
       const hashedPassword = hashPassword(password);
 
       const users = await sql`
-        SELECT id, username 
+        SELECT id, username, is_admin
         FROM users 
         WHERE username = ${cleanUsername.toLowerCase()} AND password = ${hashedPassword}
       `;
@@ -219,7 +219,7 @@ exports.handler = async (event) => {
 
       const user = users[0];
       const sessionToken = generateToken();
-      const isAdmin = user.id === 1;
+      const isAdmin = (user.is_admin === true) || user.id === 1;
 
       // Clean old sessions for this user
       await sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
@@ -257,7 +257,7 @@ exports.handler = async (event) => {
       await cleanExpiredSessions();
 
       const sessions = await sql`
-        SELECT s.user_id, u.username 
+        SELECT s.user_id, u.username, u.is_admin 
         FROM sessions s 
         JOIN users u ON s.user_id = u.id 
         WHERE s.token = ${token} AND s.expires_at > NOW()
@@ -272,7 +272,7 @@ exports.handler = async (event) => {
       }
 
       const session = sessions[0];
-      const isAdmin = session.user_id === 1;
+      const isAdmin = (session.is_admin === true) || session.user_id === 1;
       
       return {
         statusCode: 200,

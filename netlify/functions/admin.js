@@ -25,17 +25,18 @@ function validateId(id) {
   return !isNaN(numId) && numId > 0 && numId < 2147483647;
 }
 
-// Check if user is admin (user_id = 1)
+// Check if user is admin (consult users.is_admin, fallback to id=1)
 async function isAdmin(token) {
   const sql = getDB();
-  
-  const sessions = await sql`
-    SELECT user_id 
-    FROM sessions 
-    WHERE token = ${token} AND expires_at > NOW()
+
+  const rows = await sql`
+    SELECT u.id, u.is_admin
+    FROM sessions s
+    JOIN users u ON s.user_id = u.id
+    WHERE s.token = ${token} AND s.expires_at > NOW()
   `;
-  
-  return sessions.length > 0 && sessions[0].user_id === 1;
+
+  return rows.length > 0 && (rows[0].is_admin === true || rows[0].id === 1);
 }
 
 exports.handler = async (event) => {
