@@ -248,6 +248,9 @@ interface ColorOption {
       <div class="weapon-info">
         <div class="weapon-current">{{ getWeaponName(currentWeapon.id) }}</div>
         <div class="weapon-level">🔫 WEAPON LV.{{ weaponLevel }}</div>
+        <div class="daily-challenge-hud" *ngIf="isDailyChallenge">
+          🏅 {{ language === 'hu' ? 'NAPI KIHÍVÁS' : 'DAILY CHALLENGE' }}
+        </div>
         <div class="kill-streak" *ngIf="killStreak >= 5">
           🔥 {{ killStreak }} KILL STREAK!
         </div>
@@ -314,6 +317,26 @@ interface ColorOption {
         <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'en'">
           📺 Watch Ad to Continue
         </button>
+        <!-- Share Score -->
+        <div class="share-score-section">
+          <button (click)="shareScore()" class="share-btn" *ngIf="language === 'hu'">
+            📤 EREDMÉNY MEGOSZTÁSA
+          </button>
+          <button (click)="shareScore()" class="share-btn" *ngIf="language === 'en'">
+            📤 SHARE SCORE
+          </button>
+          <span class="share-copied" *ngIf="shareCopied">{{ language === 'hu' ? '✅ Vágólapra másolva!' : '✅ Copied to clipboard!' }}</span>
+        </div>
+
+        <!-- XP Earned -->
+        <div class="xp-earned" *ngIf="lastXpEarned > 0">
+          <span>⭐ +{{ lastXpEarned }} XP</span>
+          <div class="xp-bar-mini">
+            <div class="xp-fill-mini" [style.width.%]="(playerXp / xpForNextLevel) * 100"></div>
+          </div>
+          <span class="xp-level-text">{{ language === 'hu' ? 'Szint' : 'Level' }} {{ playerLevel }}</span>
+        </div>
+
         <button (click)="restart()" class="restart-btn" *ngIf="language === 'hu'">UJRAINDÍTÁS</button>
         <button (click)="restart()" class="restart-btn" *ngIf="language === 'en'">RESTART</button>
       </div>
@@ -774,6 +797,66 @@ interface ColorOption {
         </div>
         
         <h1>🎮 BULLET HELL SURVIVOR 🎮</h1>
+        
+        <!-- Player Level Badge -->
+        <div class="player-level-badge" *ngIf="isLoggedIn">
+          <div class="level-icon">⭐</div>
+          <div class="level-info">
+            <div class="level-number">{{ language === 'hu' ? 'Szint' : 'Level' }} {{ playerLevel }}</div>
+            <div class="level-title">{{ getPlayerTitle() }}</div>
+            <div class="xp-bar-main">
+              <div class="xp-fill-main" [style.width.%]="(playerXp / xpForNextLevel) * 100"></div>
+            </div>
+            <div class="xp-text">{{ playerXp }} / {{ xpForNextLevel }} XP</div>
+          </div>
+        </div>
+
+        <!-- Daily Login Reward -->
+        <div class="daily-reward-section" *ngIf="isLoggedIn && !dailyRewardClaimed">
+          <div class="daily-reward-card" (click)="claimDailyReward()">
+            <div class="daily-reward-glow"></div>
+            <div class="daily-reward-icon">🎁</div>
+            <div class="daily-reward-text">
+              <div class="daily-title" *ngIf="language === 'hu'">NAPI JUTALOM!</div>
+              <div class="daily-title" *ngIf="language === 'en'">DAILY REWARD!</div>
+              <div class="daily-streak">🔥 {{ dailyStreak }} {{ language === 'hu' ? 'napos sorozat' : 'day streak' }}</div>
+              <div class="daily-coins">💰 +{{ getDailyRewardAmount() }} {{ language === 'hu' ? 'érme' : 'coins' }}</div>
+              <div class="daily-xp">⭐ +{{ getDailyRewardXp() }} XP</div>
+            </div>
+            <div class="daily-claim-btn">{{ language === 'hu' ? 'KATTINTS AZ ÁTVÉTELHEZ!' : 'CLICK TO CLAIM!' }}</div>
+          </div>
+        </div>
+        <div class="daily-reward-claimed" *ngIf="isLoggedIn && dailyRewardClaimed">
+          <span>✅ {{ language === 'hu' ? 'Napi jutalom átvéve!' : 'Daily reward claimed!' }} 🔥 {{ dailyStreak }} {{ language === 'hu' ? 'nap' : 'days' }}</span>
+        </div>
+
+        <!-- Daily Challenge -->
+        <div class="daily-challenge-section">
+          <div class="daily-challenge-card">
+            <div class="daily-challenge-header">
+              <span class="daily-icon">🏅</span>
+              <span *ngIf="language === 'hu'">NAPI KIHÍVÁS</span>
+              <span *ngIf="language === 'en'">DAILY CHALLENGE</span>
+              <span class="daily-icon">🏅</span>
+            </div>
+            <div class="daily-challenge-desc">
+              <span>{{ getDailyChallengeDescription() }}</span>
+            </div>
+            <div class="daily-challenge-reward">
+              <span *ngIf="language === 'hu'">Jutalom: 💰 x3 érmék + ⭐ 50 XP</span>
+              <span *ngIf="language === 'en'">Reward: 💰 x3 coins + ⭐ 50 XP</span>
+            </div>
+            <div class="daily-challenge-status" *ngIf="dailyChallengeCompleted">
+              <span>✅ {{ language === 'hu' ? 'TELJESÍTVE!' : 'COMPLETED!' }}</span>
+            </div>
+            <button 
+              (click)="startDailyChallenge()" 
+              class="daily-challenge-play-btn"
+              *ngIf="!dailyChallengeCompleted">
+              {{ language === 'hu' ? '▶️ KIHÍVÁS INDÍTÁSA' : '▶️ START CHALLENGE' }}
+            </button>
+          </div>
+        </div>
         
         <!-- Hungarian Description -->
         <div class="game-description" *ngIf="language === 'hu'">
@@ -4165,6 +4248,338 @@ interface ColorOption {
       }
     }
     
+    /* === ENGAGEMENT FEATURES STYLES === */
+    
+    /* Player Level Badge */
+    .player-level-badge {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,140,0,0.1));
+      border: 2px solid #ffd700;
+      border-radius: 15px;
+      padding: 15px 25px;
+      margin: 15px auto;
+      max-width: 400px;
+      box-shadow: 0 0 25px rgba(255,215,0,0.3);
+      animation: levelGlow 2s ease-in-out infinite;
+    }
+    
+    @keyframes levelGlow {
+      0%, 100% { box-shadow: 0 0 25px rgba(255,215,0,0.3); }
+      50% { box-shadow: 0 0 40px rgba(255,215,0,0.5); }
+    }
+    
+    .level-icon {
+      font-size: 2.5em;
+      animation: spin 3s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .level-info {
+      flex: 1;
+    }
+    
+    .level-number {
+      font-size: 1.4em;
+      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700;
+    }
+    
+    .level-title {
+      font-size: 0.9em;
+      color: #ffaa00;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    
+    .xp-bar-main {
+      width: 100%;
+      height: 10px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 8px;
+      border: 1px solid #ffd700;
+    }
+    
+    .xp-fill-main {
+      height: 100%;
+      background: linear-gradient(90deg, #ffd700, #ffaa00, #ff8800);
+      border-radius: 5px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 10px #ffd700;
+    }
+    
+    .xp-text {
+      font-size: 0.8em;
+      color: #ccc;
+      margin-top: 4px;
+    }
+    
+    /* Daily Reward */
+    .daily-reward-section {
+      margin: 15px auto;
+      max-width: 500px;
+    }
+    
+    .daily-reward-card {
+      position: relative;
+      background: linear-gradient(135deg, rgba(255,100,0,0.2), rgba(255,215,0,0.15));
+      border: 3px solid #ff8800;
+      border-radius: 20px;
+      padding: 20px 25px;
+      cursor: pointer;
+      text-align: center;
+      overflow: hidden;
+      transition: all 0.3s;
+      animation: rewardPulse 1.5s ease-in-out infinite;
+    }
+    
+    .daily-reward-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 40px rgba(255,136,0,0.5);
+    }
+    
+    @keyframes rewardPulse {
+      0%, 100% { border-color: #ff8800; box-shadow: 0 0 20px rgba(255,136,0,0.3); }
+      50% { border-color: #ffd700; box-shadow: 0 0 30px rgba(255,215,0,0.4); }
+    }
+    
+    .daily-reward-glow {
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse, rgba(255,215,0,0.1) 0%, transparent 70%);
+      animation: glowRotate 4s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes glowRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .daily-reward-icon {
+      font-size: 3em;
+      animation: bounce 1s ease-in-out infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .daily-title {
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700;
+      margin: 5px 0;
+    }
+    
+    .daily-streak {
+      color: #ff8800;
+      font-size: 1.1em;
+      margin: 3px 0;
+    }
+    
+    .daily-coins, .daily-xp {
+      color: #ffcc00;
+      font-weight: bold;
+      font-size: 1em;
+    }
+    
+    .daily-claim-btn {
+      margin-top: 10px;
+      color: #00ff00;
+      font-weight: bold;
+      font-size: 1.1em;
+      animation: blink 1s ease-in-out infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .daily-reward-claimed {
+      text-align: center;
+      color: #00ff00;
+      font-size: 1em;
+      margin: 10px 0;
+      padding: 8px 15px;
+      background: rgba(0,255,0,0.1);
+      border: 1px solid rgba(0,255,0,0.3);
+      border-radius: 10px;
+    }
+    
+    /* Daily Challenge */
+    .daily-challenge-section {
+      margin: 20px auto;
+      max-width: 500px;
+    }
+    
+    .daily-challenge-card {
+      background: linear-gradient(135deg, rgba(0,170,255,0.15), rgba(100,0,255,0.1));
+      border: 3px solid #00aaff;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0,170,255,0.3);
+    }
+    
+    .daily-challenge-header {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #00ddff;
+      text-shadow: 0 0 15px #00ddff;
+      margin-bottom: 10px;
+    }
+    
+    .daily-icon {
+      animation: spin 3s linear infinite;
+      display: inline-block;
+    }
+    
+    .daily-challenge-desc {
+      color: #ccc;
+      font-size: 1.1em;
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+    }
+    
+    .daily-challenge-reward {
+      color: #ffd700;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    
+    .daily-challenge-status {
+      color: #00ff00;
+      font-size: 1.3em;
+      font-weight: bold;
+      text-shadow: 0 0 15px #00ff00;
+      animation: levelGlow 1.5s ease-in-out infinite;
+    }
+    
+    .daily-challenge-play-btn {
+      background: linear-gradient(135deg, #00aaff, #0066ff);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 1.1em;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.3s;
+      box-shadow: 0 0 20px rgba(0,170,255,0.3);
+    }
+    
+    .daily-challenge-play-btn:hover {
+      background: linear-gradient(135deg, #00ccff, #0088ff);
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(0,170,255,0.5);
+    }
+    
+    .daily-challenge-hud {
+      color: #00ddff;
+      font-weight: bold;
+      font-size: 0.85em;
+      text-shadow: 0 0 10px #00ddff;
+      background: rgba(0,170,255,0.15);
+      border: 1px solid #00aaff;
+      border-radius: 5px;
+      padding: 2px 8px;
+      margin-top: 3px;
+    }
+    
+    /* Share Score */
+    .share-score-section {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    .share-btn {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 10px 25px;
+      font-size: 1em;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 15px rgba(168,85,247,0.3);
+    }
+    
+    .share-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(168,85,247,0.5);
+    }
+    
+    .share-copied {
+      color: #00ff00;
+      font-weight: bold;
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* XP Earned on Game Over */
+    .xp-earned {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      margin: 10px 0;
+      padding: 8px 20px;
+      background: rgba(255,215,0,0.1);
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 10px;
+      color: #ffd700;
+      font-weight: bold;
+    }
+    
+    .xp-bar-mini {
+      width: 100px;
+      height: 8px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #ffd700;
+    }
+    
+    .xp-fill-mini {
+      height: 100%;
+      background: linear-gradient(90deg, #ffd700, #ff8800);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .xp-level-text {
+      color: #ffaa00;
+      font-size: 0.9em;
+    }
+    
     @media (max-width: 768px) {
       .hud {
         padding: 10px;
@@ -4959,6 +5374,31 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     kills: 0
   };
   
+  // === ENGAGEMENT FEATURES ===
+  
+  // Daily Challenge
+  isDailyChallenge: boolean = false;
+  dailyChallengeCompleted: boolean = false;
+  dailyChallengeSeed: number = 0;
+  dailyChallengeModifier: string = '';
+  
+  // Daily Login Reward
+  dailyStreak: number = 0;
+  dailyRewardClaimed: boolean = false;
+  lastLoginDate: string = '';
+  
+  // Share Score
+  shareCopied: boolean = false;
+  
+  // Player Level / XP System
+  playerXp: number = 0;
+  playerLevel: number = 1;
+  lastXpEarned: number = 0;
+  
+  get xpForNextLevel(): number {
+    return this.playerLevel * 100 + 50;
+  }
+  
   get unlockedCount(): number {
     return this.achievements.filter(a => a.unlocked).length;
   }
@@ -5029,6 +5469,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initPermanentUpgrades();
     await this.loadCoins(); // Load coins and upgrades from backend
     this.applyPermanentUpgrades();
+    this.loadDailyChallengeState();
+    this.loadDailyReward();
+    this.loadPlayerLevel();
     this.render();
   }
   
@@ -5279,8 +5722,236 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.adWatched = false;
     this.adTimer = 5;
     this.playerNameSubmitted = false;
+    this.isDailyChallenge = false;
+    this.shareCopied = false;
     const adElement = document.getElementById('ad-interstitial');
     if (adElement) adElement.style.display = 'none';
+  }
+  
+  // === DAILY CHALLENGE SYSTEM ===
+  
+  getDailySeed(): number {
+    const today = new Date();
+    return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  }
+  
+  getDailyChallengeDescription(): string {
+    const seed = this.getDailySeed();
+    const challenges = this.language === 'hu' ? [
+      '🔫 Csak pisztollyal! Érd el a 10. hullámot!',
+      '💨 Dupla sebesség ellenségek! Élj túl 8 hullámot!',
+      '🛡️ Nincs pajzs power-up! Érj el 5000 pontot!',
+      '💀 Nightmare nehézség! Élj túl 5 hullámot!',
+      '🔥 Ölj 100 ellenséget 5 percen belül!',
+      '🎯 Csak sorozat fegyverrel! Érd el a 10. hullámot!',
+      '⚡ Csak minigunnal! Szerezz 3000 pontot!'
+    ] : [
+      '🔫 Pistol only! Reach wave 10!',
+      '💨 Double speed enemies! Survive 8 waves!',
+      '🛡️ No shield power-ups! Reach 5000 points!',
+      '💀 Nightmare difficulty! Survive 5 waves!',
+      '🔥 Kill 100 enemies in 5 minutes!',
+      '🎯 Burst weapon only! Reach wave 10!',
+      '⚡ Minigun only! Score 3000 points!'
+    ];
+    return challenges[seed % challenges.length];
+  }
+  
+  getDailyChallengeConfig(): { weapon?: string, difficulty?: Difficulty, targetWave?: number, targetScore?: number, targetKills?: number } {
+    const seed = this.getDailySeed();
+    const configs = [
+      { weapon: 'pistol', targetWave: 10 },
+      { targetWave: 8 },
+      { targetScore: 5000 },
+      { difficulty: 'nightmare' as Difficulty, targetWave: 5 },
+      { targetKills: 100 },
+      { weapon: 'burst', targetWave: 10 },
+      { weapon: 'minigun', targetScore: 3000 }
+    ];
+    return configs[seed % configs.length];
+  }
+  
+  startDailyChallenge() {
+    const config = this.getDailyChallengeConfig();
+    this.isDailyChallenge = true;
+    
+    if (config.difficulty) {
+      this.currentDifficulty = config.difficulty;
+    }
+    if (config.weapon) {
+      const weapon = this.weapons.find(w => w.id === config.weapon);
+      if (weapon) this.currentWeapon = weapon;
+    }
+    this.currentGameMode = 'classic';
+    this.startGame();
+  }
+  
+  checkDailyChallengeCompletion() {
+    if (!this.isDailyChallenge || this.dailyChallengeCompleted) return;
+    
+    const config = this.getDailyChallengeConfig();
+    let completed = false;
+    
+    if (config.targetWave && this.wave >= config.targetWave) completed = true;
+    if (config.targetScore && this.score >= config.targetScore) completed = true;
+    if (config.targetKills && this.kills >= config.targetKills) completed = true;
+    
+    if (completed) {
+      this.dailyChallengeCompleted = true;
+      const today = this.getDailySeed().toString();
+      localStorage.setItem('dailyChallengeCompleted', today);
+      
+      // Triple coin reward
+      const coinMultiplier = 1 + this.getUpgradeEffect('coinMultiplier');
+      const bonusCoins = Math.floor(5 * coinMultiplier);
+      this.totalCoins += bonusCoins;
+      this.saveCoins();
+      
+      // XP reward
+      this.addXp(50);
+      
+      // Visual notification
+      this.createDamageNumber(this.canvasWidth / 2, this.canvasHeight / 2 - 30, bonusCoins, '#ffd700');
+    }
+  }
+  
+  loadDailyChallengeState() {
+    const saved = localStorage.getItem('dailyChallengeCompleted');
+    const today = this.getDailySeed().toString();
+    this.dailyChallengeCompleted = saved === today;
+  }
+  
+  // === DAILY LOGIN REWARD ===
+  
+  getDailyRewardAmount(): number {
+    const streakBonuses = [1, 2, 3, 5, 8, 10, 15];
+    const index = Math.min(this.dailyStreak, streakBonuses.length - 1);
+    return streakBonuses[Math.max(0, index)];
+  }
+  
+  getDailyRewardXp(): number {
+    return 10 + this.dailyStreak * 5;
+  }
+  
+  claimDailyReward() {
+    if (this.dailyRewardClaimed) return;
+    
+    const reward = this.getDailyRewardAmount();
+    this.totalCoins += reward;
+    this.addXp(this.getDailyRewardXp());
+    this.dailyRewardClaimed = true;
+    
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem('dailyRewardDate', today);
+    localStorage.setItem('dailyStreak', this.dailyStreak.toString());
+    
+    this.saveCoins();
+  }
+  
+  loadDailyReward() {
+    const lastDate = localStorage.getItem('dailyRewardDate');
+    const savedStreak = localStorage.getItem('dailyStreak');
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (lastDate === today) {
+      this.dailyRewardClaimed = true;
+      this.dailyStreak = parseInt(savedStreak || '0', 10);
+    } else {
+      this.dailyRewardClaimed = false;
+      
+      // Check if yesterday was the last claim (streak continues)
+      if (lastDate) {
+        const last = new Date(lastDate);
+        const now = new Date(today);
+        const diffDays = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          this.dailyStreak = parseInt(savedStreak || '0', 10) + 1;
+        } else {
+          this.dailyStreak = 0; // Reset streak
+        }
+      } else {
+        this.dailyStreak = 0;
+      }
+    }
+  }
+  
+  // === SHARE SCORE ===
+  
+  shareScore() {
+    const mode = this.currentGameMode === 'boss_rush' ? 'Boss Rush' : 'Classic';
+    const diff = this.currentDifficulty.charAt(0).toUpperCase() + this.currentDifficulty.slice(1);
+    const challenge = this.isDailyChallenge ? ' [Daily Challenge]' : '';
+    const text = `🎮 Bullet Hell Survivor${challenge}\n` +
+      `📊 Score: ${this.score} | Wave: ${this.wave} | Kills: ${this.kills}\n` +
+      `⚔️ ${mode} - ${diff}\n` +
+      `${this.isLoggedIn ? '👤 ' + this.currentUsername : ''}\n` +
+      `🏆 Can you beat my score?`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.shareCopied = true;
+        setTimeout(() => this.shareCopied = false, 3000);
+      });
+    }
+  }
+  
+  // === PLAYER LEVEL / XP SYSTEM ===
+  
+  addXp(amount: number) {
+    this.playerXp += amount;
+    this.lastXpEarned = amount;
+    
+    // Level up check
+    while (this.playerXp >= this.xpForNextLevel) {
+      this.playerXp -= this.xpForNextLevel;
+      this.playerLevel++;
+      
+      // Bonus coin on level up
+      this.totalCoins += this.playerLevel;
+      this.saveCoins();
+    }
+    
+    this.savePlayerLevel();
+  }
+  
+  awardGameXp() {
+    // XP based on performance
+    let xp = 0;
+    xp += this.wave * 5; // 5 XP per wave
+    xp += Math.floor(this.kills / 10); // 1 XP per 10 kills
+    xp += Math.floor(this.score / 500); // 1 XP per 500 score
+    
+    // Difficulty bonus
+    const diffBonuses: Record<string, number> = { easy: 1, normal: 1.5, hard: 2, nightmare: 3 };
+    xp = Math.floor(xp * (diffBonuses[this.currentDifficulty] || 1));
+    
+    // Daily challenge bonus
+    if (this.isDailyChallenge) xp = Math.floor(xp * 1.5);
+    
+    this.addXp(xp);
+  }
+  
+  getPlayerTitle(): string {
+    const titles = this.language === 'hu' ? [
+      'Újonc', 'Harcos', 'Veterán', 'Bajnok', 'Legenda', 'Mester', 'Nagyúr', 'Istenadta'
+    ] : [
+      'Rookie', 'Fighter', 'Veteran', 'Champion', 'Legend', 'Master', 'Overlord', 'Godlike'
+    ];
+    const index = Math.min(Math.floor((this.playerLevel - 1) / 5), titles.length - 1);
+    return titles[index];
+  }
+  
+  savePlayerLevel() {
+    localStorage.setItem('playerXp', this.playerXp.toString());
+    localStorage.setItem('playerLevel', this.playerLevel.toString());
+  }
+  
+  loadPlayerLevel() {
+    const xp = localStorage.getItem('playerXp');
+    const level = localStorage.getItem('playerLevel');
+    if (xp) this.playerXp = parseInt(xp, 10);
+    if (level) this.playerLevel = parseInt(level, 10);
   }
   
   gameLoop() {
@@ -5509,6 +6180,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.totalGamesPlayed++;
       this.saveStats();
       this.checkAchievements();
+      this.awardGameXp();
+      this.checkDailyChallengeCompletion();
+    }
+    
+    // Check daily challenge during gameplay
+    if (this.gameStarted && !this.gameOver && this.isDailyChallenge) {
+      this.checkDailyChallengeCompletion();
     }
     
     // Check achievements during gameplay
