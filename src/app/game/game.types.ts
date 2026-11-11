@@ -1,6 +1,7 @@
 export type GraphicsQuality = 'auto' | 'high' | 'low';
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
+export type LeaderboardMode = 'classic' | 'boss_rush' | 'mutator';
 export type GameMode = 'classic' | 'survival' | 'boss_rush' | 'time_attack';
 
 export interface PermanentUpgrade {
@@ -41,6 +42,7 @@ export interface Bullet {
   radius: number;
   damage: number;
   fromPlayer: boolean;
+  reflected?: boolean;
 }
 
 export interface Enemy {

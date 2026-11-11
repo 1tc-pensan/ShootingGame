@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 export type SfxName =
   | 'shoot' | 'hit' | 'crit' | 'kill' | 'explosion' | 'hurt' | 'shield'
-  | 'powerup' | 'ultimate' | 'dash' | 'wave' | 'boss' | 'gameover';
+  | 'parry' | 'powerup' | 'ultimate' | 'dash' | 'wave' | 'boss' | 'gameover';
 
 const STORAGE_KEY = 'soundSettings';
 const MIN_INTERVAL_MS: Partial<Record<SfxName, number>> = {
@@ -100,6 +100,11 @@ export class SoundService {
       case 'shield':
         this.tone(t, 600, 900, 0.15, 'sine', 0.2);
         this.tone(t + 0.05, 900, 1300, 0.15, 'sine', 0.15);
+        break;
+      case 'parry':
+        this.tone(t, 1800, 900, 0.18, 'triangle', 0.3);
+        this.tone(t, 2400, 1200, 0.1, 'square', 0.12);
+        this.noise(t, 0.08, 4000, 0.15);
         break;
       case 'powerup':
         [523.25, 659.25, 783.99, 1046.5].forEach((f, i) =>

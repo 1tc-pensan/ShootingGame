@@ -3903,3 +3903,197 @@ canvas {
   bottom: auto;
   top: 205px;
 }
+
+/* Parry HUD */
+.parry-key {
+  margin-top: 6px;
+  font-size: 0.8em;
+  color: #aaa;
+  font-family: 'Courier New', monospace;
+}
+
+.parry-key.ready {
+  color: #ffffff;
+  text-shadow: 0 0 8px #ffffff;
+}
+
+/* Mutator / run-upgrade HUD */
+.mutator-hud {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff66cc;
+  color: #ff66cc;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.8em;
+  font-family: 'Courier New', monospace;
+}
+
+.run-upgrades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.run-upgrade-chip {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #667eea;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  color: #fff;
+}
+
+.run-upgrade-chip small {
+  color: #ffd700;
+  margin-left: 2px;
+}
+
+/* Upgrade picker */
+.upgrade-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2900;
+  padding: 16px;
+}
+
+.upgrade-box {
+  text-align: center;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+}
+
+.upgrade-box h1 {
+  color: #ffd700;
+  margin: 0 0 6px;
+}
+
+.upgrade-box p {
+  color: #aaa;
+  margin: 0 0 20px;
+}
+
+.upgrade-cards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.upgrade-card {
+  position: relative;
+  width: 200px;
+  padding: 24px 14px 16px;
+  background: rgba(10, 10, 30, 0.95);
+  border: 3px solid #667eea;
+  border-radius: 14px;
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.upgrade-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+  border-color: #ffd700;
+}
+
+.upgrade-key {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.upgrade-icon {
+  font-size: 2.4em;
+}
+
+.upgrade-name {
+  font-weight: bold;
+  color: #ffd700;
+  margin: 6px 0;
+}
+
+.upgrade-desc {
+  font-size: 0.85em;
+  color: #ccc;
+  min-height: 2.6em;
+}
+
+.upgrade-stack {
+  margin-top: 8px;
+  font-size: 0.8em;
+  color: #00ff88;
+}
+
+/* Mutator selection (menu) */
+.mutator-selection {
+  margin: 20px 0;
+}
+
+.mutator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.mutator-card {
+  background: rgba(10, 10, 30, 0.9);
+  border: 2px solid #aa3388;
+  border-radius: 12px;
+  color: #fff;
+  padding: 12px 8px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s;
+}
+
+.mutator-card:hover {
+  border-color: #ff66cc;
+  box-shadow: 0 0 12px rgba(255, 102, 204, 0.5);
+}
+
+.mutator-card.selected {
+  border-color: #ff66cc;
+  background: linear-gradient(135deg, rgba(170, 51, 136, 0.5), rgba(255, 102, 204, 0.25));
+  box-shadow: 0 0 18px rgba(255, 102, 204, 0.8);
+}
+
+.mutator-icon {
+  font-size: 1.8em;
+}
+
+.mutator-name {
+  font-weight: bold;
+  margin: 4px 0;
+}
+
+.mutator-desc {
+  font-size: 0.72em;
+  color: #ccc;
+}
+
+.mutator-mult {
+  margin-top: 4px;
+  font-size: 0.75em;
+  color: #ffd700;
+}
+
+.mutator-note {
+  font-size: 0.8em;
+  color: #aaa;
+  text-align: center;
+}
+
+.daily-challenge-mutator {
+  margin: 6px 0;
+  color: #ff66cc;
+  font-weight: bold;
+}

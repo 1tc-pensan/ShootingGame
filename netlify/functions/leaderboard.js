@@ -52,7 +52,14 @@ function normalizeDifficulty(difficulty) {
   return VALID_DIFFICULTIES.includes(difficulty) ? difficulty : 'normal';
 }
 
-async function fetchTop(sql, mode, difficulty, type) {
+const VALID_MUTATORS = ['timeflow', 'volatile', 'glass', 'frenzy'];
+
+// '' means "no mutator"; mutator runs only exist for the classic-style board
+function normalizeMutator(mutator) {
+  return VALID_MUTATORS.includes(mutator) ? mutator : '';
+}
+
+async function fetchTop(sql, mode, difficulty, type, mutator = '') {
   const recentOnly = type === '24h';
   if (mode === 'boss_rush') {
     return recentOnly
@@ -78,7 +85,7 @@ async function fetchTop(sql, mode, difficulty, type) {
         SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
         FROM scores s
         JOIN users u ON s.user_id = u.id
-        WHERE s.difficulty = ${difficulty} AND s.created_at >= NOW() - INTERVAL '1 day'
+        WHERE s.difficulty = ${difficulty} AND s.mutator = ${mutator} AND s.created_at >= NOW() - INTERVAL '1 day'
         ORDER BY s.score DESC
         LIMIT 10
       `
@@ -86,7 +93,7 @@ async function fetchTop(sql, mode, difficulty, type) {
         SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
         FROM scores s
         JOIN users u ON s.user_id = u.id
-        WHERE s.difficulty = ${difficulty}
+        WHERE s.difficulty = ${difficulty} AND s.mutator = ${mutator}
         ORDER BY s.score DESC
         LIMIT 10
       `;
@@ -137,7 +144,8 @@ exports.handler = async (event) => {
       const gameMode = event.queryStringParameters?.gameMode || 'classic'; // 'classic' or 'boss_rush'
       
       const difficulty = normalizeDifficulty(event.queryStringParameters?.difficulty);
-      const scores = await fetchTop(sql, gameMode === 'boss_rush' ? 'boss_rush' : 'classic', difficulty, type);
+      const mutator = normalizeMutator(event.queryStringParameters?.mutator);
+      const scores = await fetchTop(sql, gameMode === 'boss_rush' ? 'boss_rush' : 'classic', difficulty, type, mutator);
       
       return {
         statusCode: 200,
@@ -203,11 +211,12 @@ exports.handler = async (event) => {
 
       const difficulty = normalizeDifficulty(req.difficulty);
       const table = mode === 'boss_rush' ? 'boss_rush' : 'classic';
+      const mutator = table === 'classic' ? normalizeMutator(req.mutator) : '';
 
       // Best existing score for this user in this game mode AND difficulty
       const maxScores = table === 'boss_rush'
         ? await sql`SELECT MAX(score) as maxScore FROM boss_rush_scores WHERE user_id = ${userId} AND difficulty = ${difficulty}`
-        : await sql`SELECT MAX(score) as maxScore FROM scores WHERE user_id = ${userId} AND difficulty = ${difficulty}`;
+        : await sql`SELECT MAX(score) as maxScore FROM scores WHERE user_id = ${userId} AND difficulty = ${difficulty} AND mutator = ${mutator}`;
 
       if (maxScores[0] && maxScores[0].maxscore >= newScore) {
         return {
@@ -227,12 +236,12 @@ exports.handler = async (event) => {
         `;
       } else {
         await sql`
-          INSERT INTO scores (user_id, score, wave, kills, difficulty)
-          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills}, ${difficulty})
+          INSERT INTO scores (user_id, score, wave, kills, difficulty, mutator)
+          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills}, ${difficulty}, ${mutator})
         `;
       }
 
-      const leaderboard = await fetchTop(sql, table, difficulty, 'alltime');
+      const leaderboard = await fetchTop(sql, table, difficulty, 'alltime', mutator);
 
       return {
         statusCode: 200,

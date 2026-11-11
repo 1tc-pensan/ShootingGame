@@ -1,6 +1,6 @@
-export type ControlAction = 'up' | 'down' | 'left' | 'right' | 'shoot' | 'ultimate' | 'dash' | 'slowmo';
+export type ControlAction = 'up' | 'down' | 'left' | 'right' | 'shoot' | 'ultimate' | 'dash' | 'slowmo' | 'parry';
 
-export const CONTROL_ACTIONS: ControlAction[] = ['up', 'down', 'left', 'right', 'shoot', 'ultimate', 'dash', 'slowmo'];
+export const CONTROL_ACTIONS: ControlAction[] = ['up', 'down', 'left', 'right', 'shoot', 'ultimate', 'dash', 'slowmo', 'parry'];
 
 export const DEFAULT_BINDINGS: Record<ControlAction, string> = {
   up: 'w',
@@ -10,7 +10,8 @@ export const DEFAULT_BINDINGS: Record<ControlAction, string> = {
   shoot: ' ',
   ultimate: 'q',
   dash: 'shift',
-  slowmo: 'e'
+  slowmo: 'e',
+  parry: 'f'
 };
 
 export const ACTION_LABELS: Record<ControlAction, { hu: string; en: string }> = {
@@ -21,7 +22,8 @@ export const ACTION_LABELS: Record<ControlAction, { hu: string; en: string }> = 
   shoot: { hu: 'Lövés', en: 'Shoot' },
   ultimate: { hu: 'Ultimate', en: 'Ultimate' },
   dash: { hu: 'Dash', en: 'Dash' },
-  slowmo: { hu: 'Slow Motion', en: 'Slow Motion' }
+  slowmo: { hu: 'Slow Motion', en: 'Slow Motion' },
+  parry: { hu: 'Parry (visszaverés)', en: 'Parry (reflect)' }
 };
 
 // Escape pauses and M mutes, so they can't be bound to a game action

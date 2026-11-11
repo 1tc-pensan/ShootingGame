@@ -104,6 +104,8 @@ async function initDB() {
     // Per-difficulty leaderboards; pre-existing rows are treated as 'normal'
     await sql`ALTER TABLE scores ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20) NOT NULL DEFAULT 'normal'`;
     await sql`ALTER TABLE boss_rush_scores ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20) NOT NULL DEFAULT 'normal'`;
+    // Mutator runs (classic-style modes only) get their own boards; '' = no mutator
+    await sql`ALTER TABLE scores ADD COLUMN IF NOT EXISTS mutator VARCHAR(30) NOT NULL DEFAULT ''`;
     await sql`CREATE INDEX IF NOT EXISTS idx_scores_diff_score ON scores(difficulty, score DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_boss_rush_diff_score ON boss_rush_scores(difficulty, score DESC)`;
 

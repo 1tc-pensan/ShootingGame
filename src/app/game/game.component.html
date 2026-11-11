@@ -47,6 +47,11 @@
         <span *ngIf="ultimateCooldown === 0 && ultimateCharge >= ultimateMaxCharge">Q - READY!</span>
         <span *ngIf="ultimateCooldown === 0 && ultimateCharge < ultimateMaxCharge">Q - {{ ultimateCharge }}/{{ ultimateMaxCharge }}</span>
       </div>
+      <div class="parry-key" [class.ready]="parryCooldown === 0">
+        🛡️ {{ keyLabel('parry') }} - PARRY
+        <span *ngIf="parryCooldown > 0">{{ (parryCooldown / 60).toFixed(1) }}s</span>
+        <span *ngIf="parryCooldown === 0">READY</span>
+      </div>
     </div>
   </div>
   
@@ -67,6 +72,15 @@
   <div class="weapon-info">
     <div class="weapon-current">{{ getWeaponName(currentWeapon.id) }}</div>
     <div class="weapon-level">🔫 WEAPON LV.{{ weaponLevel }}</div>
+    <div class="mutator-hud" *ngIf="activeMutatorDef as m">
+      {{ m.icon }} {{ t(m.name.hu, m.name.en) }} (x{{ m.scoreMultiplier }})
+      <span *ngIf="m.id === 'timeflow'"> | ⏳ {{ timeScale.toFixed(1) }}x</span>
+    </div>
+    <div class="run-upgrades" *ngIf="runUpgradeList.length > 0">
+      <span class="run-upgrade-chip" *ngFor="let u of runUpgradeList" [title]="t(u.def.name.hu, u.def.name.en) + ': ' + t(u.def.desc.hu, u.def.desc.en)">
+        {{ u.def.icon }}<small>x{{ u.n }}</small>
+      </span>
+    </div>
     <div class="daily-challenge-hud" *ngIf="isDailyChallenge">
       🏅 {{ language === 'hu' ? 'NAPI KIHÍVÁS' : 'DAILY CHALLENGE' }}
     </div>
@@ -179,6 +193,22 @@
         [class.active]="leaderboardGameMode === 'boss_rush'"
         (click)="switchLeaderboardGameMode('boss_rush')">
         👹 BOSS RUSH
+      </button>
+      <button
+        class="mode-tab-btn"
+        [class.active]="leaderboardGameMode === 'mutator'"
+        (click)="switchLeaderboardGameMode('mutator')">
+        🧪 MUTATOR
+      </button>
+    </div>
+
+    <div class="leaderboard-difficulty-tabs" *ngIf="leaderboardGameMode === 'mutator'">
+      <button
+        *ngFor="let m of mutators"
+        class="difficulty-tab-btn"
+        [class.active]="leaderboardMutator === m.id"
+        (click)="switchLeaderboardMutator(m.id)">
+        {{ m.icon }} {{ t(m.name.hu, m.name.en) }}
       </button>
     </div>
     
@@ -352,6 +382,7 @@
           <div class="tut-item"><span class="tut-key">{{ keyLabel('dash') }}</span> {{ t('Dash - rövid sérthetetlenség', 'Dash - brief invulnerability') }}</div>
           <div class="tut-item"><span class="tut-key">{{ keyLabel('ultimate') }}</span> {{ t('Ultimate (ha feltöltődött)', 'Ultimate (when charged)') }}</div>
           <div class="tut-item"><span class="tut-key">{{ keyLabel('slowmo') }}</span> {{ t('Slow Motion (10+ kill sorozat)', 'Slow Motion (10+ kill streak)') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('parry') }}</span> {{ t('Parry - visszaveri a közeli lövedékeket', 'Parry - reflects nearby bullets') }}</div>
           <div class="tut-item"><span class="tut-key">ESC</span> {{ t('Szünet és beállítások', 'Pause and settings') }}</div>
           <div class="tut-item"><span class="tut-key">M</span> {{ t('Némítás', 'Mute') }}</div>
         </ng-container>
@@ -361,6 +392,7 @@
           <div class="tut-item"><span class="tut-key">DASH</span> {{ t('Rövid sérthetetlenség', 'Brief invulnerability') }}</div>
           <div class="tut-item"><span class="tut-key">ULT</span> {{ t('Ultimate (ha feltöltődött)', 'Ultimate (when charged)') }}</div>
           <div class="tut-item"><span class="tut-key">SLOW</span> {{ t('Slow Motion (10+ kill sorozat)', 'Slow Motion (10+ kill streak)') }}</div>
+          <div class="tut-item"><span class="tut-key">PARRY</span> {{ t('Visszaveri a közeli lövedékeket', 'Reflects nearby bullets') }}</div>
         </ng-container>
       </div>
       <ul class="tutorial-tips">
@@ -368,8 +400,28 @@
         <li>{{ t('Minden 25 kill után fejlődik a fegyvered.', 'Your weapon upgrades every 25 kills.') }}</li>
         <li>{{ t('Gyűjtsd a power-upokat: ❤️ élet, ⚡ sebesség, 🔥 tűzgyorsaság, 🛡️ pajzs.', 'Collect power-ups: ❤️ health, ⚡ speed, 🔥 fire rate, 🛡️ shield.') }}</li>
         <li>{{ t('Minden 5. hullámban boss érkezik - készülj fel!', 'A boss arrives every 5 waves - be ready!') }}</li>
+        <li>{{ t('Minden 2. hullám után 3 fejlesztésből választhatsz, ami csak az adott meneten él.', 'Every 2 waves you pick 1 of 3 upgrades that last for the current run.') }}</li>
+        <li>{{ t('A Parry időzítésével visszaverheted az ellenséges lövedékeket - azok sebzik az ellenséget.', 'Time your Parry to reflect enemy bullets back at them.') }}</li>
+        <li>{{ t('A Mutátorok megváltoztatják a szabályokat, és külön ranglistájuk van.', 'Mutators change the rules and have their own leaderboards.') }}</li>
       </ul>
       <button class="resume-btn" (click)="closeTutorial()">{{ t('✅ ÉRTEM', '✅ GOT IT') }}</button>
+    </div>
+  </div>
+
+  <!-- Run upgrade picker -->
+  <div class="upgrade-overlay" *ngIf="showUpgradePicker">
+    <div class="upgrade-box">
+      <h1>{{ t('⬆️ VÁLASSZ EGY FEJLESZTÉST', '⬆️ CHOOSE AN UPGRADE') }}</h1>
+      <p>{{ t('Kattints, vagy nyomd meg az 1, 2, 3 gombot.', 'Click, or press 1, 2, 3.') }}</p>
+      <div class="upgrade-cards">
+        <button class="upgrade-card" *ngFor="let u of upgradeChoices; let i = index" (click)="pickUpgrade(i)">
+          <div class="upgrade-key">{{ i + 1 }}</div>
+          <div class="upgrade-icon">{{ u.icon }}</div>
+          <div class="upgrade-name">{{ t(u.name.hu, u.name.en) }}</div>
+          <div class="upgrade-desc">{{ t(u.desc.hu, u.desc.en) }}</div>
+          <div class="upgrade-stack">{{ runStacks[u.id] }} → {{ runStacks[u.id] + 1 }} / {{ u.maxStacks }}</div>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -383,6 +435,7 @@
       <div class="joystick-knob" [style.transform]="'translate(' + moveKnob.x + 'px,' + moveKnob.y + 'px)'"></div>
     </div>
     <div class="touch-buttons">
+      <button class="touch-btn" (pointerdown)="parry(); $event.preventDefault()">PARRY</button>
       <button class="touch-btn" (pointerdown)="dash(); $event.preventDefault()">DASH</button>
       <button class="touch-btn" (pointerdown)="activateUltimate(); $event.preventDefault()">ULT</button>
       <button class="touch-btn" (pointerdown)="activateSlowMotion(); $event.preventDefault()">SLOW</button>
@@ -397,7 +450,7 @@
     </div>
   </div>
 
-  <div class="pause-overlay" *ngIf="isPaused && !gameOver && !showTutorial">
+  <div class="pause-overlay" *ngIf="isPaused && !gameOver && !showTutorial && !showUpgradePicker">
     <div class="pause-menu">
       <h1>⏸️ PAUSED</h1>
       <p>Press ESC or click Resume to continue</p>
@@ -774,6 +827,9 @@
         <div class="daily-challenge-desc">
           <span>{{ getDailyChallengeDescription() }}</span>
         </div>
+        <div class="daily-challenge-mutator">
+          🧪 {{ t('Mai mutátor', "Today's mutator") }}: {{ mutatorLabel(getDailyMutator()) }}
+        </div>
         <div class="daily-challenge-reward">
           <span *ngIf="language === 'hu'">Jutalom: 💰 x3 érmék + ⭐ 50 XP</span>
           <span *ngIf="language === 'en'">Reward: 💰 x3 coins + ⭐ 50 XP</span>
@@ -944,6 +1000,7 @@
       <p><strong>{{ keyLabel('ultimate') }}</strong> - Ultimate (15s cooldown)</p>
       <p><strong>{{ keyLabel('dash') }}</strong> - Dash</p>
       <p><strong>{{ keyLabel('slowmo') }}</strong> - Slow Motion (10+ kill streak)</p>
+      <p><strong>{{ keyLabel('parry') }}</strong> - {{ t('Parry (visszaveri a lövedékeket)', 'Parry (reflects bullets)') }}</p>
       <p>{{ t('A billentyűket a szünet menüben (ESC) átállíthatod.', 'You can rebind keys in the pause menu (ESC).') }}</p>
     </div>
     <div class="gameplay-info">
@@ -1002,6 +1059,24 @@
       </div>
     </div>
     
+    <div class="mutator-selection" *ngIf="currentGameMode !== 'boss_rush'">
+      <h2>🧪 {{ t('Mutátor (opcionális)', 'Mutator (optional)') }}</h2>
+      <div class="mutator-grid">
+        <button class="mutator-card" [class.selected]="currentMutator === 'none'" (click)="selectMutator('none')">
+          <div class="mutator-icon">🚫</div>
+          <div class="mutator-name">{{ t('Nincs', 'None') }}</div>
+          <div class="mutator-desc">{{ t('Normál szabályok', 'Standard rules') }}</div>
+        </button>
+        <button class="mutator-card" *ngFor="let m of mutators" [class.selected]="currentMutator === m.id" (click)="selectMutator(m.id)">
+          <div class="mutator-icon">{{ m.icon }}</div>
+          <div class="mutator-name">{{ t(m.name.hu, m.name.en) }}</div>
+          <div class="mutator-desc">{{ t(m.desc.hu, m.desc.en) }}</div>
+          <div class="mutator-mult">x{{ m.scoreMultiplier }} {{ t('pont', 'score') }}</div>
+        </button>
+      </div>
+      <p class="mutator-note">{{ t('A mutátoros futamok külön ranglistára kerülnek.', 'Mutator runs go to their own leaderboards.') }}</p>
+    </div>
+
     <div class="difficulty-selection">
       <h2 *ngIf="language === 'hu'">⚔️ Válassz Nehézséget!</h2>
       <h2 *ngIf="language === 'en'">⚔️ Choose Difficulty!</h2>

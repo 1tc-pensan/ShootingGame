@@ -6,10 +6,15 @@ import { interval, Subscription, fromEvent } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { SoundService } from './sound.service';
 import {
+  ActiveMutatorId, MUTATORS, MUTATOR_IDS, MutatorDef, MutatorId, RUN_UPGRADES, RunStacks, RunUpgradeDef, RunUpgradeId,
+  emptyRunStacks, mutatorDef
+} from './game-mutators';
+import {
   ACTION_LABELS, ARROW_ALTERNATIVES, CONTROL_ACTIONS, ControlAction, DEFAULT_BINDINGS,
   RESERVED_KEYS, keyLabel, loadBindings, saveBindings
 } from './game-controls';
 import {
+  LeaderboardMode,
   GraphicsQuality,
   Difficulty,
   GameMode,
@@ -198,6 +203,23 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   touchAim = { x: 0, y: 0, active: false };
   moveKnob = { x: 0, y: 0 };
   aimKnob = { x: 0, y: 0 };
+
+  // Mutators (optional run modifiers; also applied to the daily challenge)
+  readonly mutators: MutatorDef[] = MUTATORS;
+  currentMutator: MutatorId = 'none';
+  timeScale = 1;
+  private timeAccum = 0;
+
+  // Parry (reflect nearby enemy bullets)
+  parryTimer = 0;
+  parryCooldown = 0;
+
+  // Per-run upgrade draft (offered every 2 waves)
+  runStacks: RunStacks = emptyRunStacks();
+  runUpgradeList: { def: RunUpgradeDef; n: number }[] = [];
+  showUpgradePicker = false;
+  upgradeChoices: RunUpgradeDef[] = [];
+  private lastPickerWave = 1;
 
   // Tutorial
   showTutorial = false;
@@ -623,7 +645,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   leaderboardDifficulty: Difficulty = 'normal';
   readonly leaderboardDifficulties: Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
   leaderboardType: '24h' | 'alltime' = 'alltime';
-  leaderboardGameMode: 'classic' | 'boss_rush' = 'classic';
+  leaderboardGameMode: LeaderboardMode = 'classic';
+  leaderboardMutator: ActiveMutatorId = 'timeflow';
   showLeaderboard: boolean = false;
   playerName: string = '';
   playerNameSubmitted: boolean = false;
@@ -715,6 +738,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    if (this.showUpgradePicker) {
+      if (key === '1' || key === '2' || key === '3') {
+        event.preventDefault();
+        this.pickUpgrade(Number(key) - 1);
+      }
+      return;
+    }
+
     if (this.showTutorial && (key === 'escape' || key === 'enter')) {
       event.preventDefault();
       this.closeTutorial();
@@ -741,7 +772,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (key === this.bindings.shoot) {
       event.preventDefault();
-      this.shootBullet();
+      // In Time Flow, firing happens on simulation ticks so it slows down with time
+      if (!this.hasMutator('timeflow')) this.shootBullet();
+    }
+    if (key === this.bindings.parry) {
+      event.preventDefault();
+      this.parry();
     }
     if (key === this.bindings.ultimate) {
       event.preventDefault();
@@ -754,6 +790,146 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     if (key === this.bindings.slowmo) {
       event.preventDefault();
       this.activateSlowMotion();
+    }
+  }
+
+  get activeMutator(): MutatorId {
+    if (this.currentGameMode === 'boss_rush') return 'none';
+    return this.isDailyChallenge ? this.getDailyMutator() : this.currentMutator;
+  }
+
+  get activeMutatorDef(): MutatorDef | undefined {
+    return mutatorDef(this.activeMutator);
+  }
+
+  hasMutator(id: ActiveMutatorId): boolean {
+    return this.activeMutator === id;
+  }
+
+  get mutatorScoreMultiplier(): number {
+    return this.activeMutatorDef?.scoreMultiplier ?? 1;
+  }
+
+  getDailyMutator(): ActiveMutatorId {
+    return MUTATOR_IDS[this.getDailySeed() % MUTATOR_IDS.length];
+  }
+
+  mutatorLabel(id: MutatorId): string {
+    const m = mutatorDef(id);
+    return m ? `${m.icon} ${this.t(m.name.hu, m.name.en)}` : this.t('Nincs', 'None');
+  }
+
+  selectMutator(id: MutatorId) {
+    this.currentMutator = id;
+    localStorage.setItem('selectedMutator', id);
+  }
+
+  private loadMutator() {
+    const saved = localStorage.getItem('selectedMutator');
+    if (saved === 'none' || MUTATOR_IDS.includes(saved as ActiveMutatorId)) {
+      this.currentMutator = saved as MutatorId;
+    }
+  }
+
+  get parryRadius(): number {
+    return 70 + 20 * this.runStacks.parry;
+  }
+
+  parry() {
+    if (!this.gameStarted || this.gameOver || this.isPaused) return;
+    if (this.parryCooldown > 0 || this.parryTimer > 0) return;
+    this.parryTimer = 12;
+    this.parryCooldown = Math.max(25, 70 - 12 * this.runStacks.parry);
+  }
+
+  private updateParry() {
+    if (this.parryTimer <= 0) return;
+    this.parryTimer--;
+    const cx = this.player.x + this.player.width / 2;
+    const cy = this.player.y + this.player.height / 2;
+    const radius = this.parryRadius;
+    let reflected = 0;
+
+    for (const b of this.bullets) {
+      if (b.fromPlayer) continue;
+      if (Math.hypot(b.x - cx, b.y - cy) > radius + b.radius) continue;
+
+      // Send it back at the nearest enemy (or straight back if none)
+      let target: Enemy | undefined;
+      let best = Infinity;
+      for (const e of this.enemies) {
+        const d = Math.hypot(e.x + e.width / 2 - b.x, e.y + e.height / 2 - b.y);
+        if (d < best) { best = d; target = e; }
+      }
+      const speed = Math.max(10, Math.hypot(b.vx, b.vy)) * 1.3;
+      if (target) {
+        const a = Math.atan2(target.y + target.height / 2 - b.y, target.x + target.width / 2 - b.x);
+        b.vx = Math.cos(a) * speed;
+        b.vy = Math.sin(a) * speed;
+      } else {
+        b.vx = -b.vx * 1.3;
+        b.vy = -b.vy * 1.3;
+      }
+      b.fromPlayer = true;
+      b.reflected = true;
+      b.damage = Math.max(60, b.damage * 3);
+      (b as any).pierceRemaining = 1;
+      reflected++;
+    }
+
+    if (reflected > 0) {
+      this.parryCooldown = Math.min(this.parryCooldown, 15);
+      this.ultimateCharge = Math.min(this.ultimateMaxCharge, this.ultimateCharge + 4 * reflected);
+      this.score += Math.floor(15 * reflected * this.mutatorScoreMultiplier);
+      this.createShockwave(cx, cy, '#ffffff', radius + 30);
+      this.createParticles(cx, cy, '#ffffff', 10);
+      this.createDamageNumber(cx, cy - 40, reflected, '#ffffff');
+      this.screenShake = Math.max(this.screenShake, 6);
+      this.sound.play('parry');
+      this.parryTimer = Math.max(this.parryTimer, 4);
+    }
+  }
+
+  // --- Run upgrade draft ---
+  private updateRunUpgradeList() {
+    this.runUpgradeList = RUN_UPGRADES
+      .filter(u => this.runStacks[u.id] > 0)
+      .map(def => ({ def, n: this.runStacks[def.id] }));
+  }
+
+  openUpgradePicker() {
+    const pool = RUN_UPGRADES.filter(u =>
+      this.runStacks[u.id] < u.maxStacks && !(u.id === 'maxhp' && this.hasMutator('glass')));
+    if (pool.length === 0) return;
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    this.upgradeChoices = pool.slice(0, 3);
+    this.showUpgradePicker = true;
+    this.isPaused = true;
+    this.keys = {};
+  }
+
+  pickUpgrade(index: number) {
+    const choice = this.upgradeChoices[index];
+    if (!choice || !this.showUpgradePicker) return;
+    this.runStacks[choice.id]++;
+    if (choice.id === 'maxhp') {
+      this.player.maxHealth += 25;
+      this.player.health = Math.min(this.player.maxHealth, this.player.health + 25);
+    }
+    this.updateRunUpgradeList();
+    this.showUpgradePicker = false;
+    this.isPaused = false;
+    this.sound.play('powerup');
+  }
+
+  private onRunKill() {
+    const vampire = this.runStacks.vampire;
+    if (vampire > 0 && this.kills % 4 === 0 && this.player.health < this.player.maxHealth) {
+      this.player.health = Math.min(this.player.maxHealth, this.player.health + vampire);
+      this.createDamageNumber(this.player.x, this.player.y - 20, vampire, '#00ff88');
     }
   }
 
@@ -887,6 +1063,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadAnnouncement();
     this.loadDifficulty();
     this.loadGraphicsQuality();
+    this.loadMutator();
     this.initPermanentUpgrades();
     await this.loadCoins(); // Load coins and upgrades from backend
     this.applyPermanentUpgrades();
@@ -1116,6 +1293,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.damageNumbers = [];
     this.spawnWarnings = [];
     this.shockwaves = [];
+    this.runStacks = emptyRunStacks();
+    this.updateRunUpgradeList();
+    this.showUpgradePicker = false;
+    this.lastPickerWave = 1;
+    this.parryTimer = 0;
+    this.parryCooldown = 0;
+    this.timeScale = 1;
+    this.timeAccum = 0;
     this.combo = { count: 0, multiplier: 1, timer: 0 };
     this.screenShake = 0;
     this.playerSpeed = 4;
@@ -1161,6 +1346,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Apply skill bonuses
     this.applySkillEffects();
+
+    // Glass Cannon must come last: skills/upgrades would otherwise raise max HP again
+    if (this.hasMutator('glass')) {
+      this.player.maxHealth = 1;
+      this.player.health = 1;
+    }
   }
   
   restart() {
@@ -1437,6 +1628,20 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   update() {
+    // Offer a run upgrade every second wave
+    if (this.wave > this.lastPickerWave) {
+      this.lastPickerWave = this.wave;
+      if (this.wave % 2 === 0) {
+        this.openUpgradePicker();
+        if (this.showUpgradePicker) return;
+      }
+    }
+
+    if (this.hasMutator('glass') && this.player.maxHealth !== 1) {
+      this.player.maxHealth = 1;
+      this.player.health = Math.min(1, this.player.health);
+    }
+
     // Screen shake
     if (this.screenShake > 0) {
       this.screenShake--;
@@ -1535,13 +1740,26 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     
+    // Time Flow: the world only advances at full speed while the player moves
+    if (this.hasMutator('timeflow')) {
+      const moving = this.isDown('up') || this.isDown('down') || this.isDown('left') || this.isDown('right') ||
+        this.touchMove.x !== 0 || this.touchMove.y !== 0 || this.dashDuration > 0;
+      const target = moving ? 1 : 0.2;
+      this.timeScale += (target - this.timeScale) * (moving ? 0.5 : 0.08);
+      this.timeAccum += this.timeScale;
+      if (this.timeAccum < 1) return;
+      this.timeAccum -= 1;
+    } else {
+      this.timeScale = 1;
+    }
+
     // Kill streak timer
     if (Date.now() - this.lastKillTime > 3000) {
       this.killStreak = 0;
     }
     
     // Player movement
-    const currentSpeed = this.playerSpeed;
+    const currentSpeed = this.playerSpeed * (1 + 0.08 * this.runStacks.speed);
     let moved = false;
     if (this.isDown('up')) {
       this.player.y = Math.max(0, this.player.y - currentSpeed);
@@ -1598,6 +1816,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.shootBullet();
     }
     
+    if (this.parryCooldown > 0) this.parryCooldown--;
+    this.updateParry();
+
     // Update bullets
     this.bullets = this.bullets.filter(bullet => {
       bullet.x += bullet.vx;
@@ -2087,7 +2308,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   shootBullet() {
     const now = Date.now();
-    const weaponFireRate = Math.max(50, this.currentWeapon.fireRate - this.weaponLevel * 10);
+    const weaponFireRate = Math.max(40,
+      (this.currentWeapon.fireRate - this.weaponLevel * 10) * (1 - Math.min(0.5, 0.12 * this.runStacks.firerate)));
     if (now - this.lastShot < weaponFireRate) return;
     
     const dx = this.mouseX - (this.player.x + this.player.width / 2);
@@ -2096,12 +2318,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     if (dist > 0) {
       const baseAngle = Math.atan2(dy, dx);
-      const bulletCount = this.currentWeapon.bulletCount + Math.floor(this.weaponLevel / 3);
+      const bulletCount = this.currentWeapon.bulletCount + Math.floor(this.weaponLevel / 3) + this.runStacks.multishot;
+      const spread = this.runStacks.multishot > 0 ? Math.max(this.currentWeapon.spreadAngle, 0.1) : this.currentWeapon.spreadAngle;
       
       for (let i = 0; i < bulletCount; i++) {
-        const offset = (i - (bulletCount - 1) / 2) * this.currentWeapon.spreadAngle;
+        const offset = (i - (bulletCount - 1) / 2) * spread;
         const angle = baseAngle + offset;
-        
+
         this.bullets.push({
           x: this.player.x + this.player.width / 2,
           y: this.player.y + this.player.height / 2,
@@ -2110,7 +2333,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           radius: this.currentWeapon.bulletSize + this.weaponLevel * 0.3,
           damage: this.currentWeapon.damage + this.weaponLevel * 5,
           fromPlayer: true,
-          ...(this.currentWeapon.pierce ? { pierceRemaining: this.currentWeapon.pierce + this.getSkillValue('pierce') } : {})
+          ...((this.currentWeapon.pierce || this.runStacks.pierce)
+            ? { pierceRemaining: (this.currentWeapon.pierce ?? 0) + this.runStacks.pierce + this.getSkillValue('pierce') }
+            : {})
         });
       }
       
@@ -2281,7 +2506,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       height: config.height,
       health: Math.floor(config.health * finalHealthScale),
       maxHealth: Math.floor(config.health * finalHealthScale),
-      speed: config.speed * finalSpeedScale,
+      speed: config.speed * finalSpeedScale * (this.hasMutator('frenzy') ? 1.4 : 1),
       type,
       shootTimer: 0,
       movePattern: 0
@@ -2439,7 +2664,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           if (this.circleRectCollision(bullet.x, bullet.y, bullet.radius,  
                                        enemy.x, enemy.y, enemy.width, enemy.height)) {
             // Apply damage multiplier from permanent upgrades
-            const damageMultiplier = 1 + this.getUpgradeEffect('damage');
+            const damageMultiplier = (1 + this.getUpgradeEffect('damage')) * (1 + 0.15 * this.runStacks.dmg);
             const baseDamage = this.ultimateActive ? bullet.damage * 2 : bullet.damage;
             const damage = baseDamage * damageMultiplier;
             
@@ -2501,9 +2726,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             
             if (enemy.health <= 0) {
               // Exploder special effect before removal
-              if (enemy.type === 'exploder') {
+              const volatileBlast = this.hasMutator('volatile') && enemy.type !== 'exploder';
+              if (enemy.type === 'exploder' || volatileBlast) {
                 // Explosion damage to nearby enemies and player
-                const explosionRadius = 100;
+                const explosionRadius = volatileBlast ? 70 : 100;
                 
                 // Damage player if nearby
                 const playerDx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
@@ -2511,7 +2737,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                 const playerDist = Math.sqrt(playerDx * playerDx + playerDy * playerDy);
                 
                 if (playerDist < explosionRadius && this.player.invulnerable === 0 && !this.hasShield) {
-                  this.player.health -= 30;
+                  this.player.health -= volatileBlast ? 15 : 30;
                   this.player.invulnerable = 60;
                   this.waveDamageTaken = true;
                   this.sound.play('hurt');
@@ -2526,7 +2752,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                     const otherDist = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
                     
                     if (otherDist < explosionRadius) {
-                      other.health -= 50;
+                      other.health -= volatileBlast ? 30 : 50;
                     }
                   }
                 });
@@ -2542,9 +2768,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               this.enemies.splice(j, 1);
               this.kills++;
               if (enemy.type === 'splitter') this.spawnSplitChildren(enemy);
+              this.onRunKill();
               this.createShockwave(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2,
                 enemy.type.startsWith('boss') ? '#ff4444' : '#ffffff', enemy.type.startsWith('boss') ? 160 : 45);
-              this.sound.play(enemy.type === 'exploder' || enemy.type.startsWith('boss') ? 'explosion' : 'kill');
+              this.sound.play(enemy.type === 'exploder' || volatileBlast || enemy.type.startsWith('boss') ? 'explosion' : 'kill');
               
               // Kill streak
               this.killStreak++;
@@ -2575,7 +2802,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               
               // Ultimate charge
               const chargeGain = enemy.type === 'boss' ? 50 : enemy.type === 'tank' ? 15 : 10;
-              this.ultimateCharge = Math.min(this.ultimateMaxCharge, this.ultimateCharge + chargeGain);
+              this.ultimateCharge = Math.min(this.ultimateMaxCharge, this.ultimateCharge + Math.round(chargeGain * (1 + 0.25 * this.runStacks.ult)));
               
               // Combo system
               this.combo.count++;
@@ -2601,12 +2828,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                            enemy.type === 'fast' ? 50 : 25;
               
               const diffMultipliers = this.getDifficultyMultipliers();
-              this.score += Math.floor(baseScore * this.combo.multiplier * diffMultipliers.scoreBonus);
+              this.score += Math.floor(baseScore * this.combo.multiplier * diffMultipliers.scoreBonus * this.mutatorScoreMultiplier);
               
               this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0000', 20);
               
               // Random power-up spawn (10% chance)
-              if (Math.random() < 0.1) {
+              if (Math.random() < (this.hasMutator('frenzy') ? 0.3 : 0.1)) {
                 this.spawnPowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
               }
               
@@ -2696,6 +2923,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     
+    this.sweepDeadEnemies();
+
     // Power-ups vs Player
     for (let i = this.powerUps.length - 1; i >= 0; i--) {
       const powerUp = this.powerUps[i];
@@ -2712,6 +2941,28 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   
+  // Enemies killed by area damage (explosions) are removed here and credited like normal kills
+  private sweepDeadEnemies() {
+    if (!this.enemies.some(e => e.health <= 0)) return;
+    const dead = this.enemies.filter(e => e.health <= 0);
+    this.enemies = this.enemies.filter(e => e.health > 0);
+    for (const enemy of dead) {
+      this.kills++;
+      this.killStreak++;
+      this.lastKillTime = Date.now();
+      this.combo.count++;
+      this.combo.timer = 180;
+      this.combo.multiplier = Math.min(5, 1 + Math.floor(this.combo.count / 5) * 0.5);
+      const base = enemy.type.startsWith('boss') ? 1000 : enemy.type === 'miniboss' ? 300 : enemy.type === 'tank' ? 100 : 25;
+      this.score += Math.floor(base * this.combo.multiplier * this.getDifficultyMultipliers().scoreBonus * this.mutatorScoreMultiplier);
+      if (enemy.type === 'splitter') this.spawnSplitChildren(enemy);
+      this.onRunKill();
+      this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff8800', 15);
+      this.createShockwave(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffffff', 45);
+      this.sound.play('kill');
+    }
+  }
+
   spawnSplitChildren(parent: Enemy) {
     const childHealth = Math.max(20, Math.floor(parent.maxHealth * 0.3));
     for (const dir of [-1, 1]) {
@@ -2883,7 +3134,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     
     this.dashDuration = 10;
-    this.dashCooldown = 120; // 2 seconds
+    this.dashCooldown = Math.round(120 * (1 - Math.min(0.5, 0.2 * this.runStacks.dash))); // 2 seconds
     this.sound.play('dash');
     this.createShockwave(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#00ffff', 60);
     
@@ -2976,6 +3227,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.ctx.shadowBlur = 0;
     }
     
+    // Time Flow tint (stronger the slower time runs)
+    if (this.hasMutator('timeflow') && this.timeScale < 0.95) {
+      this.ctx.fillStyle = `rgba(80, 120, 255, ${(1 - this.timeScale) * 0.18})`;
+      this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+    }
+
     // Slow motion tint
     if (this.slowMotion > 0) {
       this.ctx.fillStyle = 'rgba(100, 100, 255, 0.1)';
@@ -3110,6 +3367,18 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.ctx.shadowBlur = 0;
     }
     
+    // Parry ring
+    if (this.parryTimer > 0) {
+      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.lineWidth = 3;
+      this.ctx.globalAlpha = 0.35 + 0.5 * (this.parryTimer / 12);
+      this.ctx.beginPath();
+      this.ctx.arc(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2,
+                   this.parryRadius * (0.7 + 0.3 * (this.parryTimer / 12)), 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.globalAlpha = 1;
+    }
+
     // Dash trail effect
     if (this.dashDuration > 0) {
       this.ctx.strokeStyle = '#00ffff';
@@ -3180,7 +3449,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     // Bullets
     const bulletGlow = !this.lowFx && this.bullets.length <= 120;
     this.bullets.forEach(bullet => {
-      const bulletColor = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
+      const bulletColor = bullet.reflected ? '#ffffff' : bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
       if (!this.lowFx && bullet.fromPlayer) {
         // Short fading trail behind player bullets
         this.ctx.strokeStyle = bulletColor;
@@ -3368,18 +3637,21 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     miniCtx.strokeRect(0, 0, miniMapWidth, miniMapHeight);
   }
   
-  leaderboardKey(mode: 'classic' | 'boss_rush', difficulty: Difficulty, type: '24h' | 'alltime'): string {
-    return `${mode}|${difficulty}|${type}`;
+  leaderboardKey(mode: LeaderboardMode, difficulty: Difficulty, type: '24h' | 'alltime', mutator: string = ''): string {
+    return `${mode}|${difficulty}|${type}|${mode === 'mutator' ? mutator : ''}`;
   }
 
-  loadLeaderboard(mode: 'classic' | 'boss_rush' = this.leaderboardGameMode,
-                  difficulty: Difficulty = this.leaderboardDifficulty) {
+  loadLeaderboard(mode: LeaderboardMode = this.leaderboardGameMode,
+                  difficulty: Difficulty = this.leaderboardDifficulty,
+                  mutator: ActiveMutatorId = this.leaderboardMutator) {
+    const apiMode = mode === 'boss_rush' ? 'boss_rush' : 'classic';
+    const apiMutator = mode === 'mutator' ? mutator : '';
     for (const type of ['alltime', '24h'] as const) {
       this.http.get<LeaderboardEntry[]>(
-        `${this.apiUrl}/leaderboard?type=${type}&gameMode=${mode}&difficulty=${difficulty}`
+        `${this.apiUrl}/leaderboard?type=${type}&gameMode=${apiMode}&difficulty=${difficulty}&mutator=${apiMutator}`
       ).subscribe({
         next: (data) => {
-          this.leaderboards[this.leaderboardKey(mode, difficulty, type)] =
+          this.leaderboards[this.leaderboardKey(mode, difficulty, type, mutator)] =
             this.deduplicateLeaderboard(data).slice(0, 10);
         },
         error: (err) => {
@@ -3392,20 +3664,25 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   filter24h(entries: LeaderboardEntry[]): LeaderboardEntry[] {
     const now = new Date().getTime();
     const twentyFourHours = 24 * 60 * 60 * 1000;
-    
+
     return entries.filter(entry => {
       if (!entry.date) return false;
       const entryTime = new Date(entry.date).getTime();
       return (now - entryTime) <= twentyFourHours;
     });
   }
-  
+
   switchLeaderboardType(type: '24h' | 'alltime') {
     this.leaderboardType = type;
   }
-  
-  switchLeaderboardGameMode(mode: 'classic' | 'boss_rush') {
+
+  switchLeaderboardGameMode(mode: LeaderboardMode) {
     this.leaderboardGameMode = mode;
+    this.loadLeaderboard();
+  }
+
+  switchLeaderboardMutator(mutator: ActiveMutatorId) {
+    this.leaderboardMutator = mutator;
     this.loadLeaderboard();
   }
 
@@ -3413,13 +3690,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.leaderboardDifficulty = difficulty;
     this.loadLeaderboard();
   }
-  
+
   getCurrentLeaderboard(): LeaderboardEntry[] {
     return this.leaderboards[
-      this.leaderboardKey(this.leaderboardGameMode, this.leaderboardDifficulty, this.leaderboardType)
+      this.leaderboardKey(this.leaderboardGameMode, this.leaderboardDifficulty, this.leaderboardType, this.leaderboardMutator)
     ] ?? [];
   }
-  
+
   deduplicateLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
     const playerMap = new Map<string, LeaderboardEntry>();
     
@@ -3463,7 +3740,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       wave: this.wave,
       kills: this.kills,
       gameMode: this.currentGameMode,
-      difficulty: this.currentDifficulty
+      difficulty: this.currentDifficulty,
+      mutator: this.activeMutator === 'none' ? '' : this.activeMutator
     };
     
     console.log('Submitting score to:', `${this.apiUrl}/leaderboard`);
@@ -3476,7 +3754,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('Score submitted successfully:', response);
         
         // Show the board the score was just submitted to
-        this.leaderboardGameMode = this.currentGameMode === 'boss_rush' ? 'boss_rush' : 'classic';
+        const usedMutator = this.activeMutator;
+        this.leaderboardGameMode = this.currentGameMode === 'boss_rush' ? 'boss_rush' : usedMutator !== 'none' ? 'mutator' : 'classic';
+        if (usedMutator !== 'none') this.leaderboardMutator = usedMutator;
         this.leaderboardDifficulty = this.currentDifficulty;
         this.loadLeaderboard();
         
