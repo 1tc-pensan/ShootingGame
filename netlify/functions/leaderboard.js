@@ -46,6 +46,52 @@ async function initLeaderboard() {
   await initDB();
 }
 
+const VALID_DIFFICULTIES = ['easy', 'normal', 'hard', 'nightmare'];
+
+function normalizeDifficulty(difficulty) {
+  return VALID_DIFFICULTIES.includes(difficulty) ? difficulty : 'normal';
+}
+
+async function fetchTop(sql, mode, difficulty, type) {
+  const recentOnly = type === '24h';
+  if (mode === 'boss_rush') {
+    return recentOnly
+      ? sql`
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM boss_rush_scores s
+          JOIN users u ON s.user_id = u.id
+          WHERE s.difficulty = ${difficulty} AND s.created_at >= NOW() - INTERVAL '1 day'
+          ORDER BY s.score DESC
+          LIMIT 10
+        `
+      : sql`
+          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+          FROM boss_rush_scores s
+          JOIN users u ON s.user_id = u.id
+          WHERE s.difficulty = ${difficulty}
+          ORDER BY s.score DESC
+          LIMIT 10
+        `;
+  }
+  return recentOnly
+    ? sql`
+        SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+        FROM scores s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.difficulty = ${difficulty} AND s.created_at >= NOW() - INTERVAL '1 day'
+        ORDER BY s.score DESC
+        LIMIT 10
+      `
+    : sql`
+        SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
+        FROM scores s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.difficulty = ${difficulty}
+        ORDER BY s.score DESC
+        LIMIT 10
+      `;
+}
+
 exports.handler = async (event) => {
   await initLeaderboard();
   const sql = getDB();
@@ -90,47 +136,8 @@ exports.handler = async (event) => {
       const type = event.queryStringParameters?.type; // '24h' or 'alltime'
       const gameMode = event.queryStringParameters?.gameMode || 'classic'; // 'classic' or 'boss_rush'
       
-      let scores;
-      
-      if (gameMode === 'boss_rush') {
-        if (type === '24h') {
-          scores = await sql`
-            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-            FROM boss_rush_scores s
-            JOIN users u ON s.user_id = u.id
-            WHERE s.created_at >= NOW() - INTERVAL '1 day'
-            ORDER BY s.score DESC
-            LIMIT 10
-          `;
-        } else {
-          scores = await sql`
-            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-            FROM boss_rush_scores s
-            JOIN users u ON s.user_id = u.id
-            ORDER BY s.score DESC
-            LIMIT 10
-          `;
-        }
-      } else {
-        if (type === '24h') {
-          scores = await sql`
-            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-            FROM scores s
-            JOIN users u ON s.user_id = u.id
-            WHERE s.created_at >= NOW() - INTERVAL '1 day'
-            ORDER BY s.score DESC
-            LIMIT 10
-          `;
-        } else {
-          scores = await sql`
-            SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-            FROM scores s
-            JOIN users u ON s.user_id = u.id
-            ORDER BY s.score DESC
-            LIMIT 10
-          `;
-        }
-      }
+      const difficulty = normalizeDifficulty(event.queryStringParameters?.difficulty);
+      const scores = await fetchTop(sql, gameMode === 'boss_rush' ? 'boss_rush' : 'classic', difficulty, type);
       
       return {
         statusCode: 200,
@@ -140,7 +147,8 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'POST') {
-      const { token, score, wave, kills, gameMode } = JSON.parse(event.body);
+      const req = JSON.parse(event.body);
+      const { token, score, wave, kills, gameMode } = req;
       
       if (!token || score === undefined) {
         return {
@@ -193,90 +201,44 @@ exports.handler = async (event) => {
       const newKills = parseInt(kills);
       const mode = gameMode || 'classic';
 
-      // Check if player already has a better score in this game mode
-      if (mode === 'boss_rush') {
-        const maxScores = await sql`
-          SELECT MAX(score) as maxScore 
-          FROM boss_rush_scores 
-          WHERE user_id = ${userId}
-        `;
+      const difficulty = normalizeDifficulty(req.difficulty);
+      const table = mode === 'boss_rush' ? 'boss_rush' : 'classic';
 
-        if (maxScores[0] && maxScores[0].maxscore >= newScore) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ 
-              error: 'You already have a better score',
-              existingScore: maxScores[0].maxscore 
-            })
-          };
-        }
+      // Best existing score for this user in this game mode AND difficulty
+      const maxScores = table === 'boss_rush'
+        ? await sql`SELECT MAX(score) as maxScore FROM boss_rush_scores WHERE user_id = ${userId} AND difficulty = ${difficulty}`
+        : await sql`SELECT MAX(score) as maxScore FROM scores WHERE user_id = ${userId} AND difficulty = ${difficulty}`;
 
-        // Insert new score into boss rush table
-        await sql`
-          INSERT INTO boss_rush_scores (user_id, score, wave, kills) 
-          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
-        `;
-
-        // Get updated leaderboard for boss rush
-        const leaderboard = await sql`
-          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM boss_rush_scores s
-          JOIN users u ON s.user_id = u.id
-          ORDER BY s.score DESC 
-          LIMIT 10
-        `;
-
+      if (maxScores[0] && maxScores[0].maxscore >= newScore) {
         return {
-          statusCode: 200,
+          statusCode: 400,
           headers,
-          body: JSON.stringify({ 
-            success: true, 
-            leaderboard: leaderboard 
-          })
-        };
-      } else {
-        const maxScores = await sql`
-          SELECT MAX(score) as maxScore 
-          FROM scores 
-          WHERE user_id = ${userId}
-        `;
-
-        if (maxScores[0] && maxScores[0].maxscore >= newScore) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ 
-              error: 'You already have a better score',
-              existingScore: maxScores[0].maxscore 
-            })
-          };
-        }
-
-        // Insert new score into classic table
-        await sql`
-          INSERT INTO scores (user_id, score, wave, kills) 
-          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills})
-        `;
-
-        // Get updated leaderboard for classic
-        const leaderboard = await sql`
-          SELECT s.id, u.username as name, s.score, s.wave, s.kills, s.created_at as date
-          FROM scores s
-          JOIN users u ON s.user_id = u.id
-          ORDER BY s.score DESC 
-          LIMIT 10
-        `;
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ 
-            success: true, 
-            leaderboard: leaderboard 
+          body: JSON.stringify({
+            error: 'You already have a better score',
+            existingScore: maxScores[0].maxscore
           })
         };
       }
+
+      if (table === 'boss_rush') {
+        await sql`
+          INSERT INTO boss_rush_scores (user_id, score, wave, kills, difficulty)
+          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills}, ${difficulty})
+        `;
+      } else {
+        await sql`
+          INSERT INTO scores (user_id, score, wave, kills, difficulty)
+          VALUES (${userId}, ${newScore}, ${newWave}, ${newKills}, ${difficulty})
+        `;
+      }
+
+      const leaderboard = await fetchTop(sql, table, difficulty, 'alltime');
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, leaderboard })
+      };
     }
 
     return {

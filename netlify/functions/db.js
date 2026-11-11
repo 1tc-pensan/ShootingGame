@@ -101,6 +101,12 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_boss_rush_created_at ON boss_rush_scores(created_at DESC)
     `;
 
+    // Per-difficulty leaderboards; pre-existing rows are treated as 'normal'
+    await sql`ALTER TABLE scores ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20) NOT NULL DEFAULT 'normal'`;
+    await sql`ALTER TABLE boss_rush_scores ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20) NOT NULL DEFAULT 'normal'`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_scores_diff_score ON scores(difficulty, score DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_boss_rush_diff_score ON boss_rush_scores(difficulty, score DESC)`;
+
     await sql`
       CREATE TABLE IF NOT EXISTS sessions (
         id SERIAL PRIMARY KEY,

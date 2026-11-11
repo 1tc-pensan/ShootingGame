@@ -366,6 +366,17 @@ interface ColorOption {
           </button>
         </div>
         
+        <!-- Difficulty Tabs -->
+        <div class="leaderboard-difficulty-tabs">
+          <button
+            *ngFor="let diff of leaderboardDifficulties"
+            class="difficulty-tab-btn"
+            [class.active]="leaderboardDifficulty === diff"
+            (click)="switchLeaderboardDifficulty(diff)">
+            {{ diff === 'easy' ? '😊' : diff === 'normal' ? '😐' : diff === 'hard' ? '😠' : '💀' }} {{ diff }}
+          </button>
+        </div>
+
         <!-- Time Period Tabs -->
         <div class="leaderboard-tabs">
           <button 
@@ -2629,6 +2640,39 @@ interface ColorOption {
       border-color: #00ff00;
     }
     
+    .leaderboard-difficulty-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .difficulty-tab-btn {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 0.95em;
+      font-weight: bold;
+      border: 2px solid #aa7700;
+      background: rgba(0, 0, 0, 0.7);
+      color: #ffaa00;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+    }
+
+    .difficulty-tab-btn:hover {
+      background: rgba(255, 170, 0, 0.2);
+      border-color: #ffaa00;
+    }
+
+    .difficulty-tab-btn.active {
+      background: linear-gradient(135deg, rgba(170, 110, 0, 0.9), rgba(255, 170, 0, 0.9));
+      color: #000;
+      border-color: #ffaa00;
+      box-shadow: 0 0 15px rgba(255, 170, 0, 0.7);
+    }
+
     .leaderboard-tabs {
       display: flex;
       gap: 10px;
@@ -5394,10 +5438,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   bossSpawned: boolean = false;
   
   leaderboard: LeaderboardEntry[] = [];
-  leaderboard24h: LeaderboardEntry[] = [];
-  leaderboardAllTime: LeaderboardEntry[] = [];
-  leaderboard24hBossRush: LeaderboardEntry[] = [];
-  leaderboardAllTimeBossRush: LeaderboardEntry[] = [];
+  leaderboards: Record<string, LeaderboardEntry[]> = {};
+  leaderboardDifficulty: Difficulty = 'normal';
+  readonly leaderboardDifficulties: Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
   leaderboardType: '24h' | 'alltime' = 'alltime';
   leaderboardGameMode: 'classic' | 'boss_rush' = 'classic';
   showLeaderboard: boolean = false;
@@ -7941,63 +7984,27 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     miniCtx.strokeRect(0, 0, miniMapWidth, miniMapHeight);
   }
   
-  loadLeaderboard() {
-    console.log('Loading leaderboard from:', `${this.apiUrl}/leaderboard`);
-    
-    // Load Classic mode leaderboards
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime&gameMode=classic`)
-      .subscribe({
-        next: (data) => {
-          console.log('Classic all-time leaderboard loaded:', data);
-          this.leaderboardAllTime = this.deduplicateLeaderboard(data).slice(0, 10);
-          this.leaderboard = this.leaderboardAllTime;
-        },
-        error: (err) => {
-          console.error('Failed to load classic all-time leaderboard:', err);
-          const saved = localStorage.getItem('bulletHellLeaderboard');
-          if (saved) {
-            const deduplicated = this.deduplicateLeaderboard(JSON.parse(saved));
-            this.leaderboardAllTime = deduplicated;
-            this.leaderboard = this.leaderboardAllTime;
-          }
-        }
-      });
-    
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h&gameMode=classic`)
-      .subscribe({
-        next: (data) => {
-          console.log('Classic 24h leaderboard loaded:', data);
-          this.leaderboard24h = this.deduplicateLeaderboard(data).slice(0, 10);
-        },
-        error: (err) => {
-          console.error('Failed to load classic 24h leaderboard:', err);
-        }
-      });
-    
-    // Load Boss Rush mode leaderboards
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=alltime&gameMode=boss_rush`)
-      .subscribe({
-        next: (data) => {
-          console.log('Boss Rush all-time leaderboard loaded:', data);
-          this.leaderboardAllTimeBossRush = this.deduplicateLeaderboard(data).slice(0, 10);
-        },
-        error: (err) => {
-          console.error('Failed to load boss rush all-time leaderboard:', err);
-        }
-      });
-    
-    this.http.get<LeaderboardEntry[]>(`${this.apiUrl}/leaderboard?type=24h&gameMode=boss_rush`)
-      .subscribe({
-        next: (data) => {
-          console.log('Boss Rush 24h leaderboard loaded:', data);
-          this.leaderboard24hBossRush = this.deduplicateLeaderboard(data).slice(0, 10);
-        },
-        error: (err) => {
-          console.error('Failed to load boss rush 24h leaderboard:', err);
-        }
-      });
+  leaderboardKey(mode: 'classic' | 'boss_rush', difficulty: Difficulty, type: '24h' | 'alltime'): string {
+    return `${mode}|${difficulty}|${type}`;
   }
-  
+
+  loadLeaderboard(mode: 'classic' | 'boss_rush' = this.leaderboardGameMode,
+                  difficulty: Difficulty = this.leaderboardDifficulty) {
+    for (const type of ['alltime', '24h'] as const) {
+      this.http.get<LeaderboardEntry[]>(
+        `${this.apiUrl}/leaderboard?type=${type}&gameMode=${mode}&difficulty=${difficulty}`
+      ).subscribe({
+        next: (data) => {
+          this.leaderboards[this.leaderboardKey(mode, difficulty, type)] =
+            this.deduplicateLeaderboard(data).slice(0, 10);
+        },
+        error: (err) => {
+          console.error(`Failed to load ${mode}/${difficulty}/${type} leaderboard:`, err);
+        }
+      });
+    }
+  }
+
   filter24h(entries: LeaderboardEntry[]): LeaderboardEntry[] {
     const now = new Date().getTime();
     const twentyFourHours = 24 * 60 * 60 * 1000;
@@ -8015,43 +8022,18 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   switchLeaderboardGameMode(mode: 'classic' | 'boss_rush') {
     this.leaderboardGameMode = mode;
-    this.loadLeaderboardForMode(mode);
+    this.loadLeaderboard();
+  }
+
+  switchLeaderboardDifficulty(difficulty: Difficulty) {
+    this.leaderboardDifficulty = difficulty;
+    this.loadLeaderboard();
   }
   
   getCurrentLeaderboard(): LeaderboardEntry[] {
-    if (this.leaderboardGameMode === 'boss_rush') {
-      return this.leaderboardType === '24h' ? this.leaderboard24hBossRush : this.leaderboardAllTimeBossRush;
-    } else {
-      return this.leaderboardType === '24h' ? this.leaderboard24h : this.leaderboardAllTime;
-    }
-  }
-  
-  async loadLeaderboardForMode(mode: 'classic' | 'boss_rush') {
-    try {
-      // Load 24h for this mode
-      const response24h = await fetch(`/.netlify/functions/leaderboard?type=24h&gameMode=${mode}`);
-      if (response24h.ok) {
-        const data = await response24h.json();
-        if (mode === 'boss_rush') {
-          this.leaderboard24hBossRush = data;
-        } else {
-          this.leaderboard24h = data;
-        }
-      }
-      
-      // Load all time for this mode
-      const responseAll = await fetch(`/.netlify/functions/leaderboard?type=alltime&gameMode=${mode}`);
-      if (responseAll.ok) {
-        const data = await responseAll.json();
-        if (mode === 'boss_rush') {
-          this.leaderboardAllTimeBossRush = data;
-        } else {
-          this.leaderboardAllTime = data;
-        }
-      }
-    } catch (error) {
-      console.error(`Error loading ${mode} leaderboard:`, error);
-    }
+    return this.leaderboards[
+      this.leaderboardKey(this.leaderboardGameMode, this.leaderboardDifficulty, this.leaderboardType)
+    ] ?? [];
   }
   
   deduplicateLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
@@ -8096,7 +8078,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       score: this.score,
       wave: this.wave,
       kills: this.kills,
-      gameMode: this.currentGameMode
+      gameMode: this.currentGameMode,
+      difficulty: this.currentDifficulty
     };
     
     console.log('Submitting score to:', `${this.apiUrl}/leaderboard`);
@@ -8108,13 +8091,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (response) => {
         console.log('Score submitted successfully:', response);
         
-        // Reload full leaderboard from server
+        // Show the board the score was just submitted to
+        this.leaderboardGameMode = this.currentGameMode === 'boss_rush' ? 'boss_rush' : 'classic';
+        this.leaderboardDifficulty = this.currentDifficulty;
         this.loadLeaderboard();
-        
-        // Set leaderboard to show the correct game mode
-        if (this.currentGameMode === 'boss_rush' || this.currentGameMode === 'classic') {
-          this.leaderboardGameMode = this.currentGameMode;
-        }
         
         this.playerNameSubmitted = true;
         this.justSubmitted = true;
@@ -8155,6 +8135,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   toggleLeaderboard() {
     this.showLeaderboard = !this.showLeaderboard;
+    if (this.showLeaderboard && this.leaderboardDifficulty !== this.currentDifficulty) {
+      this.leaderboardDifficulty = this.currentDifficulty;
+      this.loadLeaderboard();
+    }
   }
   
   toggleAchievements() {
