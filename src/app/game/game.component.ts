@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, fromEvent } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { SoundService } from './sound.service';
+
+type GraphicsQuality = 'auto' | 'high' | 'low';
 
 type Difficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
 type GameMode = 'classic' | 'survival' | 'boss_rush' | 'time_attack';
@@ -514,6 +517,30 @@ interface ColorOption {
         <div class="pause-menu">
           <h1>⏸️ PAUSED</h1>
           <p>Press ESC or click Resume to continue</p>
+          <div class="pause-settings">
+            <div class="pause-row">
+              <span>🔊 SFX</span>
+              <input type="range" min="0" max="1" step="0.05" [value]="sound.sfxVolume"
+                     (input)="sound.setSfxVolume(+$any($event.target).value)">
+            </div>
+            <div class="pause-row">
+              <span>🎵 MUSIC</span>
+              <input type="range" min="0" max="1" step="0.05" [value]="sound.musicVolume"
+                     (input)="sound.setMusicVolume(+$any($event.target).value)">
+            </div>
+            <div class="pause-row">
+              <span>🔇 MUTE (M)</span>
+              <button type="button" class="pause-toggle" (click)="sound.toggleMute()">{{ sound.muted ? 'ON' : 'OFF' }}</button>
+            </div>
+            <div class="pause-row">
+              <span>🖥️ GRAPHICS</span>
+              <select [value]="graphicsQuality" (change)="setGraphicsQuality($any($event.target).value)">
+                <option value="auto">Auto</option>
+                <option value="high">High</option>
+                <option value="low">Low (faster)</option>
+              </select>
+            </div>
+          </div>
           <button (click)="togglePause()" class="resume-btn">▶️ RESUME</button>
         </div>
       </div>
@@ -3167,6 +3194,38 @@ interface ColorOption {
       color: #ccc;
     }
     
+    .pause-settings {
+      margin: 20px 0;
+      text-align: left;
+      font-family: 'Courier New', monospace;
+    }
+
+    .pause-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin: 12px 0;
+      font-size: 1.1em;
+    }
+
+    .pause-row input[type="range"] {
+      width: 160px;
+      accent-color: #667eea;
+    }
+
+    .pause-row select,
+    .pause-toggle {
+      background: #1a1a3a;
+      color: #fff;
+      border: 2px solid #667eea;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-family: inherit;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+
     .resume-btn {
       background: linear-gradient(135deg, #00ff00, #00cc00);
       color: #000;
@@ -4802,7 +4861,20 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   // Auth service
   authService = inject(AuthService);
-  
+  sound = inject(SoundService);
+
+  // Graphics quality / performance
+  graphicsQuality: GraphicsQuality = 'auto';
+  private autoLowFx = false;
+  private lastFrameTime = 0;
+  private accumulator = 0;
+  private slowFrames = 0;
+  private readonly STEP_MS = 1000 / 60;
+
+  get lowFx(): boolean {
+    return this.graphicsQuality === 'low' || (this.graphicsQuality === 'auto' && this.autoLowFx);
+  }
+
   // Expose Math to template
   Math = Math;
   
@@ -5405,6 +5477,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   @HostListener('window:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
+    const target = event.target as HTMLElement | null;
+    const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+    if (event.key.toLowerCase() === 'm' && !typing) {
+      this.sound.toggleMute();
+      return;
+    }
+
     // ESC to pause/unpause
     if (event.key === 'Escape' && this.gameStarted && !this.gameOver) {
       event.preventDefault();
@@ -5466,6 +5545,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadAdSense();
     this.loadAnnouncement();
     this.loadDifficulty();
+    this.loadGraphicsQuality();
     this.initPermanentUpgrades();
     await this.loadCoins(); // Load coins and upgrades from backend
     this.applyPermanentUpgrades();
@@ -5639,15 +5719,38 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   startGame() {
     this.gameStarted = true;
+    this.isPaused = false;
+    this.sound.unlock();
+    this.sound.startMusic();
     this.resetGame();
+    if (this.animationId) cancelAnimationFrame(this.animationId);
+    this.lastFrameTime = 0;
+    this.accumulator = 0;
     this.gameLoop();
   }
-  
+
   togglePause() {
     if (!this.gameStarted || this.gameOver) return;
     this.isPaused = !this.isPaused;
+    if (this.isPaused) {
+      this.sound.stopMusic();
+    } else {
+      this.sound.startMusic();
+    }
   }
-  
+
+  setGraphicsQuality(q: GraphicsQuality) {
+    this.graphicsQuality = q;
+    this.autoLowFx = false;
+    this.slowFrames = 0;
+    localStorage.setItem('graphicsQuality', q);
+  }
+
+  private loadGraphicsQuality() {
+    const q = localStorage.getItem('graphicsQuality');
+    if (q === 'auto' || q === 'high' || q === 'low') this.graphicsQuality = q;
+  }
+
   resetGame() {
     this.player = {
       x: 450,
@@ -5717,6 +5820,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   restart() {
     // Reset to menu instead of restarting immediately
+    this.sound.stopMusic();
     this.gameStarted = false;
     this.gameOver = false;
     this.adWatched = false;
@@ -5956,13 +6060,35 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   
   gameLoop() {
     if (this.gameOver) return;
-    
-    if (!this.isPaused) {
-      this.update();
+
+    const now = performance.now();
+    if (this.lastFrameTime === 0) this.lastFrameTime = now;
+    // Clamp so a background tab / long stall doesn't cause a burst of catch-up updates
+    const delta = Math.min(now - this.lastFrameTime, 100);
+    this.lastFrameTime = now;
+
+    // Fixed 60 Hz simulation: game speed no longer depends on monitor refresh rate
+    this.accumulator += delta;
+    while (this.accumulator >= this.STEP_MS - 1) {
+      if (!this.isPaused) {
+        this.update();
+      }
+      this.accumulator -= this.STEP_MS;
+      if (this.gameOver) break;
     }
-    
+
+    this.monitorPerformance(delta);
     this.render();
     this.animationId = requestAnimationFrame(() => this.gameLoop());
+  }
+
+  private monitorPerformance(delta: number) {
+    if (this.graphicsQuality !== 'auto' || this.autoLowFx || this.isPaused) return;
+    // ~45 FPS or worse (delta is clamped to 100ms)
+    this.slowFrames = delta > 22 ? this.slowFrames + 1 : Math.max(0, this.slowFrames - 1);
+    if (this.slowFrames > 90) {
+      this.autoLowFx = true;
+    }
   }
   
   update() {
@@ -6177,6 +6303,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     // Check game over
     if (this.player.health <= 0) {
       this.gameOver = true;
+      this.sound.stopMusic();
+      this.sound.play('gameover');
       this.totalGamesPlayed++;
       this.saveStats();
       this.checkAchievements();
@@ -6622,6 +6750,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       
       this.lastShot = now;
+      this.sound.play('shoot');
     }
   }
   
@@ -6641,7 +6770,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.currentGameMode === 'boss_rush') {
       this.bossWarning = 180;
       this.bossWarningTimer = 0;
-      
+      this.sound.play('boss');
+
       setTimeout(() => {
         this.spawnBoss();
         this.screenFlash = 1.0;
@@ -6658,6 +6788,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       // Boss warning system
       this.bossWarning = 180; // 3 seconds warning
       this.bossWarningTimer = 0;
+      this.sound.play('boss');
       
       setTimeout(() => {
         this.spawnBoss();
@@ -6697,6 +6828,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     this.wave++;
+    this.sound.play('wave');
     this.waveDamageTaken = false; // Reset for next wave
     
     // Check Speedrunner achievement
@@ -6965,6 +7097,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             
             this.createParticles(bullet.x, bullet.y, isCritical ? '#ff00ff' : '#ffff00');
+            this.sound.play(isCritical ? 'crit' : 'hit');
             this.createDamageNumber(bullet.x, bullet.y, finalDamage, isCritical ? '#ff00ff' : '#ffff00');
             
             // Critical hit effects
@@ -7013,6 +7146,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                   this.player.health -= 30;
                   this.player.invulnerable = 60;
                   this.waveDamageTaken = true;
+                  this.sound.play('hurt');
                   this.screenShake = 25;
                 }
                 
@@ -7036,9 +7170,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.screenFlashColor = '#ff8800';
                 this.screenShake = 20;
               }
-              
+
               this.enemies.splice(j, 1);
               this.kills++;
+              this.sound.play(enemy.type === 'exploder' || enemy.type.startsWith('boss') ? 'explosion' : 'kill');
               
               // Kill streak
               this.killStreak++;
@@ -7123,6 +7258,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           if (this.player.invulnerable === 0) {
             // Shield power-up blocks all damage
             if (this.hasShield) {
+              this.sound.play('shield');
               this.createDamageNumber(this.player.x, this.player.y, 0, '#8a2be2');
               this.createParticles(bullet.x, bullet.y, '#8a2be2', 15);
               this.screenFlash = 0.2;
@@ -7149,6 +7285,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
                   this.player.health -= bullet.damage;
                   this.player.invulnerable = 60;
                   this.waveDamageTaken = true;
+                  this.sound.play('hurt');
                   this.createParticles(bullet.x, bullet.y, '#ff0000', 15);
                 }
               }
@@ -7178,6 +7315,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
             this.player.health -= Math.floor(30 * diffMultipliers.enemyDamage);
             this.player.invulnerable = 60;
             this.waveDamageTaken = true;
+            this.sound.play('hurt');
             this.screenShake = 20;
             this.createParticles(this.player.x + this.player.width / 2, 
                                this.player.y + this.player.height / 2, '#ff0000', 20);
@@ -7195,6 +7333,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       
       if (dist < powerUp.size + 20) {
         this.collectPowerUp(powerUp.type);
+        this.sound.play('powerup');
         this.powerUps.splice(i, 1);
         this.createParticles(powerUp.x, powerUp.y, '#ffd700', 30);
       }
@@ -7309,7 +7448,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ultimateCooldown = 900; // 15 seconds cooldown
     this.playerFireRate = 50; // Super fast fire rate
     this.screenShake = 15;
-    
+    this.sound.play('ultimate');
     // Screen-wide damage to all enemies
     this.enemies.forEach(enemy => {
       enemy.health -= 100;
@@ -7343,6 +7482,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.dashDuration = 10;
     this.dashCooldown = 120; // 2 seconds
+    this.sound.play('dash');
     
     // Leave trail
     for (let i = 0; i < 20; i++) {
@@ -7370,6 +7510,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   createParticles(x: number, y: number, color: string, count: number = 10) {
+    const maxParticles = this.lowFx ? 250 : 600;
+    if (this.lowFx) count = Math.ceil(count / 2);
+    count = Math.min(count, maxParticles - this.particles.length);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 5 + 2;
@@ -7436,21 +7579,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
     
-    // Grid background
+    // Grid background (single batched path)
     this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
     this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
     for (let i = 0; i < this.canvasWidth; i += 50) {
-      this.ctx.beginPath();
       this.ctx.moveTo(i, 0);
       this.ctx.lineTo(i, this.canvasHeight);
-      this.ctx.stroke();
     }
     for (let i = 0; i < this.canvasHeight; i += 50) {
-      this.ctx.beginPath();
       this.ctx.moveTo(0, i);
       this.ctx.lineTo(this.canvasWidth, i);
-      this.ctx.stroke();
     }
+    this.ctx.stroke();
     
     // Spawn warnings
     this.spawnWarnings.forEach(w => {
@@ -7463,15 +7604,18 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     this.ctx.globalAlpha = 1;
     
-    // Particles
+    // Particles (glow only on high quality and while the count is moderate)
+    const particleGlow = !this.lowFx && this.particles.length <= 200;
     this.particles.forEach(p => {
       this.ctx.fillStyle = p.color;
       this.ctx.globalAlpha = p.life / 60;
-      this.ctx.shadowBlur = 5;
-      this.ctx.shadowColor = p.color;
+      if (particleGlow) {
+        this.ctx.shadowBlur = 5;
+        this.ctx.shadowColor = p.color;
+      }
       this.ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      this.ctx.shadowBlur = 0;
     });
+    this.ctx.shadowBlur = 0;
     this.ctx.globalAlpha = 1;
     
     // Critical hit effects
@@ -7619,15 +7763,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     // Bullets
+    const bulletGlow = !this.lowFx && this.bullets.length <= 120;
     this.bullets.forEach(bullet => {
-      this.ctx.fillStyle = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
-      this.ctx.shadowBlur = 10;
-      this.ctx.shadowColor = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
+      const bulletColor = bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
+      this.ctx.fillStyle = bulletColor;
+      if (bulletGlow) {
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = bulletColor;
+      }
       this.ctx.beginPath();
       this.ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
       this.ctx.fill();
-      this.ctx.shadowBlur = 0;
     });
+    this.ctx.shadowBlur = 0;
     
     // Enemies
     this.enemies.forEach(enemy => {
@@ -7661,8 +7809,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.ctx.fillRect(enemy.x, enemy.y - 8, enemy.width * healthPercent, 4);
       
       // Glow effect
-      this.ctx.shadowBlur = 15;
-      this.ctx.shadowColor = colors[enemy.type] || '#ff0000';
+      if (!this.lowFx) {
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = colors[enemy.type] || '#ff0000';
+      }
       this.ctx.strokeStyle = colors[enemy.type] || '#ff0000';
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
@@ -9140,6 +9290,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   ngOnDestroy() {
+    this.sound.stopMusic();
     this.subscriptions.unsubscribe();
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
