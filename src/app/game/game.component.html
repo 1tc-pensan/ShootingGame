@@ -1,0 +1,1049 @@
+<div class="game-container" [class.game-over]="gameOver" [class.touch-mode]="showTouchControls && gameStarted">
+  <!-- Google AdSense Banner Top -->
+  <div class="ad-banner-top" id="ad-banner-top">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-5062569894299417"
+         data-ad-slot="1234567890"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  </div>
+  
+  <div class="hud">
+    <div class="health-bar">
+      <div class="health-label">HP</div>
+      <div class="health-bg">
+        <div class="health-fill" [style.width.%]="Math.max(0, (player.health / player.maxHealth) * 100)"></div>
+      </div>
+      <div class="health-text">{{ Math.max(0, player.health) }} / {{ player.maxHealth }}</div>
+    </div>
+    
+    <div class="stats">
+      <div class="stat">
+        <span class="label">SCORE:</span>
+        <span class="value">{{ score }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">WAVE:</span>
+        <span class="value">{{ wave }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">KILLS:</span>
+        <span class="value">{{ kills }}</span>
+      </div>
+      <div class="stat" *ngIf="combo.count > 1">
+        <span class="label">COMBO:</span>
+        <span class="value combo-value">{{ combo.count }}x</span>
+      </div>
+    </div>
+    
+    <div class="ultimate-bar">
+      <div class="ultimate-label">⚡ ULTIMATE</div>
+      <div class="ultimate-bg">
+        <div class="ultimate-fill" [style.width.%]="(ultimateCharge / ultimateMaxCharge) * 100"></div>
+      </div>
+      <div class="ultimate-key" [class.ready]="ultimateCharge >= ultimateMaxCharge && ultimateCooldown === 0">
+        <span *ngIf="ultimateCooldown > 0">Q - CD: {{ (ultimateCooldown / 60).toFixed(1) }}s</span>
+        <span *ngIf="ultimateCooldown === 0 && ultimateCharge >= ultimateMaxCharge">Q - READY!</span>
+        <span *ngIf="ultimateCooldown === 0 && ultimateCharge < ultimateMaxCharge">Q - {{ ultimateCharge }}/{{ ultimateMaxCharge }}</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Global Announcement Banner -->
+  <div class="announcement-banner" *ngIf="globalAnnouncement">
+    <span class="announce-icon">📢</span>
+    <span class="announce-text">{{globalAnnouncement}}</span>
+    <span class="announce-icon">📢</span>
+  </div>
+  
+  <div class="active-powerups" *ngIf="activePowerUps.length > 0">
+    <div *ngFor="let powerup of activePowerUps" class="powerup-indicator" [class]="'powerup-' + powerup.type">
+      <span class="powerup-icon">{{ getPowerUpIcon(powerup.type) }}</span>
+      <span class="powerup-time">{{ (powerup.duration / 60).toFixed(1) }}s</span>
+    </div>
+  </div>
+  
+  <div class="weapon-info">
+    <div class="weapon-current">{{ getWeaponName(currentWeapon.id) }}</div>
+    <div class="weapon-level">🔫 WEAPON LV.{{ weaponLevel }}</div>
+    <div class="daily-challenge-hud" *ngIf="isDailyChallenge">
+      🏅 {{ language === 'hu' ? 'NAPI KIHÍVÁS' : 'DAILY CHALLENGE' }}
+    </div>
+    <div class="kill-streak" *ngIf="killStreak >= 5">
+      🔥 {{ killStreak }} KILL STREAK!
+    </div>
+    <div class="slow-motion-info" *ngIf="killStreak >= 10">
+      <span *ngIf="slowMotionCooldown > 0">⏱️ E - CD: {{ (slowMotionCooldown / 60).toFixed(1) }}s</span>
+      <span *ngIf="slowMotionCooldown === 0" class="ready">⏱️ E - READY!</span>
+    </div>
+  </div>
+  
+  <div class="mini-map">
+    <div class="mini-map-title">RADAR</div>
+    <canvas #miniMapCanvas width="150" height="150"></canvas>
+  </div>
+  
+  <canvas 
+    #gameCanvas 
+    [width]="canvasWidth" 
+    [height]="canvasHeight">
+  </canvas>
+  
+  <div class="game-over-screen" *ngIf="gameOver">
+    <h1>GAME OVER</h1>
+    
+    <!-- Interstitial Ad -->
+    <div class="ad-interstitial" id="ad-interstitial">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-5062569894299417"
+           data-ad-slot="9876543210"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <button class="ad-close" [class.active]="adTimer <= 0" (click)="closeAd()">
+        {{ adTimer > 0 ? 'Skip Ad (' + adTimer + 's)' : 'Close Ad' }}
+      </button>
+    </div>
+    
+    <div class="final-stats">
+      <p *ngIf="language === 'hu'">Végső Pontszám: <strong>{{ score }}</strong></p>
+      <p *ngIf="language === 'en'">Final Score: <strong>{{ score }}</strong></p>
+      <p *ngIf="language === 'hu'">Elért Hullám: <strong>{{ wave }}</strong></p>
+      <p *ngIf="language === 'en'">Wave Reached: <strong>{{ wave }}</strong></p>
+      <p *ngIf="language === 'hu'">Megjölt Ellenségek: <strong>{{ kills }}</strong></p>
+      <p *ngIf="language === 'en'">Enemies Killed: <strong>{{ kills }}</strong></p>
+      <p *ngIf="isLoggedIn && language === 'hu'">Játékos: <strong>{{ currentUsername }}</strong></p>
+      <p *ngIf="isLoggedIn && language === 'en'">Player: <strong>{{ currentUsername }}</strong></p>
+    </div>
+    <div class="submit-score-section" *ngIf="!playerNameSubmitted">
+      <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn && language === 'hu'">
+        💾 PONTSZÁM MENTÉSE
+      </button>
+      <button (click)="submitScore()" class="submit-btn" *ngIf="isLoggedIn && language === 'en'">
+        💾 SAVE SCORE
+      </button>
+      <p class="auth-warning" *ngIf="!isLoggedIn && language === 'hu'">
+        ⚠️ Bejelentkezés szükséges a pontszám mentéséhez!
+      </p>
+      <p class="auth-warning" *ngIf="!isLoggedIn && language === 'en'">
+        ⚠️ Login required to save your score!
+      </p>
+    </div>
+    <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'hu'">
+      📺 Reklam Megtekintése a Folytatáshoz
+    </button>
+    <button (click)="watchAdForContinue()" class="rewarded-ad-btn" *ngIf="!adWatched && language === 'en'">
+      📺 Watch Ad to Continue
+    </button>
+    <!-- Share Score -->
+    <div class="share-score-section">
+      <button (click)="shareScore()" class="share-btn" *ngIf="language === 'hu'">
+        📤 EREDMÉNY MEGOSZTÁSA
+      </button>
+      <button (click)="shareScore()" class="share-btn" *ngIf="language === 'en'">
+        📤 SHARE SCORE
+      </button>
+      <span class="share-copied" *ngIf="shareCopied">{{ language === 'hu' ? '✅ Vágólapra másolva!' : '✅ Copied to clipboard!' }}</span>
+    </div>
+
+    <!-- XP Earned -->
+    <div class="xp-earned" *ngIf="lastXpEarned > 0">
+      <span>⭐ +{{ lastXpEarned }} XP</span>
+      <div class="xp-bar-mini">
+        <div class="xp-fill-mini" [style.width.%]="(playerXp / xpForNextLevel) * 100"></div>
+      </div>
+      <span class="xp-level-text">{{ language === 'hu' ? 'Szint' : 'Level' }} {{ playerLevel }}</span>
+    </div>
+
+    <button (click)="restart()" class="restart-btn" *ngIf="language === 'hu'">UJRAINDÍTÁS</button>
+    <button (click)="restart()" class="restart-btn" *ngIf="language === 'en'">RESTART</button>
+  </div>
+  
+  <div class="leaderboard" *ngIf="showLeaderboard">
+    <div class="leaderboard-header">
+      <h2>🏆 LEADERBOARD 🏆</h2>
+      <button (click)="toggleLeaderboard()" class="close-btn">✕</button>
+    </div>
+    
+    <!-- Game Mode Tabs -->
+    <div class="leaderboard-mode-tabs">
+      <button 
+        class="mode-tab-btn" 
+        [class.active]="leaderboardGameMode === 'classic'"
+        (click)="switchLeaderboardGameMode('classic')">
+        🎯 CLASSIC
+      </button>
+      <button 
+        class="mode-tab-btn" 
+        [class.active]="leaderboardGameMode === 'boss_rush'"
+        (click)="switchLeaderboardGameMode('boss_rush')">
+        👹 BOSS RUSH
+      </button>
+    </div>
+    
+    <!-- Difficulty Tabs -->
+    <div class="leaderboard-difficulty-tabs">
+      <button
+        *ngFor="let diff of leaderboardDifficulties"
+        class="difficulty-tab-btn"
+        [class.active]="leaderboardDifficulty === diff"
+        (click)="switchLeaderboardDifficulty(diff)">
+        {{ diff === 'easy' ? '😊' : diff === 'normal' ? '😐' : diff === 'hard' ? '😠' : '💀' }} {{ diff }}
+      </button>
+    </div>
+
+    <!-- Time Period Tabs -->
+    <div class="leaderboard-tabs">
+      <button 
+        class="tab-btn" 
+        [class.active]="leaderboardType === '24h'"
+        (click)="switchLeaderboardType('24h')">
+        📅 24 HOURS
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="leaderboardType === 'alltime'"
+        (click)="switchLeaderboardType('alltime')">
+        ⏳ ALL TIME
+      </button>
+    </div>
+    
+    <div class="leaderboard-list">
+      <div class="leaderboard-entry header-entry">
+        <span class="rank">#</span>
+        <span class="name">NAME</span>
+        <span class="score-col">SCORE</span>
+        <span class="wave-col">WAVE</span>
+        <span class="kills-col">KILLS</span>
+        <span class="action-col" *ngIf="authService.isAdmin"></span>
+      </div>
+      <div 
+        *ngFor="let entry of getCurrentLeaderboard(); let i = index" 
+        class="leaderboard-entry"
+        [class.highlight]="entry.name === currentUsername && justSubmitted"
+        [class.current-player]="entry.name.toLowerCase() === currentUsername.toLowerCase()">
+        <span class="rank">{{ i + 1 }}</span>
+        <span class="name">
+          {{ entry.name.length > 15 ? (entry.name.substring(0, 15) + '...') : entry.name }}
+          <span class="you-badge" *ngIf="entry.name.toLowerCase() === currentUsername.toLowerCase()"> (YOU)</span>
+        </span>
+        <span class="score-col">{{ entry.score }}</span>
+        <span class="wave-col">{{ entry.wave }}</span>
+        <span class="kills-col">{{ entry.kills }}</span>
+        <span class="action-col" *ngIf="authService.isAdmin">
+          <button class="edit-score-btn" (click)="openEditScoreModal(entry)" title="Edit Score">✏️</button>
+          <button class="delete-score-btn" (click)="entry.id && deleteScore(entry.id)" title="Delete Score">🗑️</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Score Modal -->
+  <div class="edit-score-modal" *ngIf="showEditScoreModal && authService.isAdmin">
+    <div class="edit-score-content">
+      <h2>✏️ Edit Score</h2>
+      <div class="edit-form">
+        <label>
+          Player: <strong>{{ editingScore?.name }}</strong>
+        </label>
+        <label>
+          Score:
+          <input type="number" [(ngModel)]="editScoreData.score" placeholder="Score">
+        </label>
+        <label>
+          Wave:
+          <input type="number" [(ngModel)]="editScoreData.wave" placeholder="Wave">
+        </label>
+        <label>
+          Kills:
+          <input type="number" [(ngModel)]="editScoreData.kills" placeholder="Kills">
+        </label>
+      </div>
+      <div class="edit-actions">
+        <button class="save-btn" (click)="saveEditedScore()">💾 Save</button>
+        <button class="cancel-btn" (click)="closeEditScoreModal()">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="edit-score-modal" *ngIf="showPasswordChangeModal && authService.isAdmin">
+    <div class="edit-score-content">
+      <h2>🔑 Change Password</h2>
+      <div class="edit-form">
+        <label>
+          User: <strong>{{ changingPasswordUser?.username }}</strong> (ID: {{ changingPasswordUser?.id }})
+        </label>
+        <label>
+          New Password:
+          <input type="password" [(ngModel)]="newPasswordInput" placeholder="Enter new password" autocomplete="new-password">
+        </label>
+        <p class="warning-text">⚠️ This will log out the user from all devices!</p>
+      </div>
+      <div class="edit-actions">
+        <button class="save-btn" (click)="changeUserPassword()">🔑 Change Password</button>
+        <button class="cancel-btn" (click)="closeChangePasswordModal()">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="side-menu-buttons">
+    <button 
+      *ngIf="!showLeaderboard && gameStarted && !gameOver" 
+      (click)="toggleLeaderboard()" 
+      class="side-menu-btn leaderboard-btn">
+      🏆 LEADERBOARD
+    </button>
+    
+    <button 
+      *ngIf="!showAchievements && gameStarted && !gameOver" 
+      (click)="toggleAchievements()" 
+      class="side-menu-btn achievements-btn">
+      🎖️ ACHIEVEMENTS
+    </button>
+    
+    <button 
+      *ngIf="!showSkills && gameStarted && !gameOver" 
+      (click)="toggleSkills()" 
+      class="side-menu-btn skills-btn">
+      🌟 SKILLS
+    </button>
+    
+    <button 
+      *ngIf="!showShop && !gameStarted" 
+      (click)="showShop = !showShop" 
+      class="side-menu-btn shop-btn">
+      🛒 {{ language === 'hu' ? 'BOLT' : 'SHOP' }}
+    </button>
+    
+    <a 
+      *ngIf="gameStarted && !gameOver"
+      href="https://ko-fi.com/szeretemakiflit" 
+      target="_blank"
+      class="side-menu-btn support-btn">
+      ☕ SUPPORT ME
+    </a>
+    
+    <button 
+      *ngIf="gameStarted && !gameOver"
+      (click)="togglePause()" 
+      class="side-menu-btn pause-btn">
+      {{ isPaused ? '▶️ RESUME' : '⏸️ PAUSE' }}
+    </button>
+    
+    <button 
+      *ngIf="authService.isAdmin && gameStarted && !gameOver"
+      (click)="toggleAdminPanel()"
+      class="side-menu-btn admin-btn">
+      ⚙️ ADMIN
+    </button>
+  </div>
+  
+  <!-- Tutorial -->
+  <div class="tutorial-overlay" *ngIf="showTutorial" (click)="closeTutorial()">
+    <div class="tutorial-box" (click)="$event.stopPropagation()">
+      <h1>{{ t('🎮 HOGYAN JÁTSSZ', '🎮 HOW TO PLAY') }}</h1>
+      <div class="tutorial-grid">
+        <ng-container *ngIf="!showTouchControls">
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('up') }} {{ keyLabel('left') }} {{ keyLabel('down') }} {{ keyLabel('right') }}</span> {{ t('Mozgás (vagy nyílbillentyűk)', 'Move (or arrow keys)') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ t('Egér', 'Mouse') }}</span> {{ t('Célzás', 'Aim') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('shoot') }}</span> {{ t('Lövés (tartsd lenyomva)', 'Shoot (hold)') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('dash') }}</span> {{ t('Dash - rövid sérthetetlenség', 'Dash - brief invulnerability') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('ultimate') }}</span> {{ t('Ultimate (ha feltöltődött)', 'Ultimate (when charged)') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ keyLabel('slowmo') }}</span> {{ t('Slow Motion (10+ kill sorozat)', 'Slow Motion (10+ kill streak)') }}</div>
+          <div class="tut-item"><span class="tut-key">ESC</span> {{ t('Szünet és beállítások', 'Pause and settings') }}</div>
+          <div class="tut-item"><span class="tut-key">M</span> {{ t('Némítás', 'Mute') }}</div>
+        </ng-container>
+        <ng-container *ngIf="showTouchControls">
+          <div class="tut-item"><span class="tut-key">{{ t('Bal kar', 'Left stick') }}</span> {{ t('Mozgás', 'Move') }}</div>
+          <div class="tut-item"><span class="tut-key">{{ t('Jobb kar', 'Right stick') }}</span> {{ t('Célzás és automatikus lövés', 'Aim and auto-fire') }}</div>
+          <div class="tut-item"><span class="tut-key">DASH</span> {{ t('Rövid sérthetetlenség', 'Brief invulnerability') }}</div>
+          <div class="tut-item"><span class="tut-key">ULT</span> {{ t('Ultimate (ha feltöltődött)', 'Ultimate (when charged)') }}</div>
+          <div class="tut-item"><span class="tut-key">SLOW</span> {{ t('Slow Motion (10+ kill sorozat)', 'Slow Motion (10+ kill streak)') }}</div>
+        </ng-container>
+      </div>
+      <ul class="tutorial-tips">
+        <li>{{ t('Ölj ellenségeket, tartsd fenn a combót a magasabb pontszámért.', 'Kill enemies and keep your combo for a higher score.') }}</li>
+        <li>{{ t('Minden 25 kill után fejlődik a fegyvered.', 'Your weapon upgrades every 25 kills.') }}</li>
+        <li>{{ t('Gyűjtsd a power-upokat: ❤️ élet, ⚡ sebesség, 🔥 tűzgyorsaság, 🛡️ pajzs.', 'Collect power-ups: ❤️ health, ⚡ speed, 🔥 fire rate, 🛡️ shield.') }}</li>
+        <li>{{ t('Minden 5. hullámban boss érkezik - készülj fel!', 'A boss arrives every 5 waves - be ready!') }}</li>
+      </ul>
+      <button class="resume-btn" (click)="closeTutorial()">{{ t('✅ ÉRTEM', '✅ GOT IT') }}</button>
+    </div>
+  </div>
+
+  <!-- Touch controls -->
+  <div class="touch-controls" *ngIf="showTouchControls && gameStarted && !gameOver && !isPaused">
+    <div class="joystick joystick-move"
+         (pointerdown)="joystickStart('move', $event)"
+         (pointermove)="joystickMove('move', $event)"
+         (pointerup)="joystickEnd('move')"
+         (pointercancel)="joystickEnd('move')">
+      <div class="joystick-knob" [style.transform]="'translate(' + moveKnob.x + 'px,' + moveKnob.y + 'px)'"></div>
+    </div>
+    <div class="touch-buttons">
+      <button class="touch-btn" (pointerdown)="dash(); $event.preventDefault()">DASH</button>
+      <button class="touch-btn" (pointerdown)="activateUltimate(); $event.preventDefault()">ULT</button>
+      <button class="touch-btn" (pointerdown)="activateSlowMotion(); $event.preventDefault()">SLOW</button>
+      <button class="touch-btn touch-pause" (pointerdown)="togglePause(); $event.preventDefault()">⏸</button>
+    </div>
+    <div class="joystick joystick-aim"
+         (pointerdown)="joystickStart('aim', $event)"
+         (pointermove)="joystickMove('aim', $event)"
+         (pointerup)="joystickEnd('aim')"
+         (pointercancel)="joystickEnd('aim')">
+      <div class="joystick-knob" [style.transform]="'translate(' + aimKnob.x + 'px,' + aimKnob.y + 'px)'"></div>
+    </div>
+  </div>
+
+  <div class="pause-overlay" *ngIf="isPaused && !gameOver && !showTutorial">
+    <div class="pause-menu">
+      <h1>⏸️ PAUSED</h1>
+      <p>Press ESC or click Resume to continue</p>
+      <div class="pause-settings">
+        <div class="pause-row">
+          <span>🔊 SFX</span>
+          <input type="range" min="0" max="1" step="0.05" [value]="sound.sfxVolume"
+                 (input)="sound.setSfxVolume(+$any($event.target).value)">
+        </div>
+        <div class="pause-row">
+          <span>🎵 MUSIC</span>
+          <input type="range" min="0" max="1" step="0.05" [value]="sound.musicVolume"
+                 (input)="sound.setMusicVolume(+$any($event.target).value)">
+        </div>
+        <div class="pause-row">
+          <span>🔇 MUTE (M)</span>
+          <button type="button" class="pause-toggle" (click)="sound.toggleMute()">{{ sound.muted ? 'ON' : 'OFF' }}</button>
+        </div>
+        <div class="pause-row">
+          <span>🖥️ GRAPHICS</span>
+          <select [value]="graphicsQuality" (change)="setGraphicsQuality($any($event.target).value)">
+            <option value="auto">Auto</option>
+            <option value="high">High</option>
+            <option value="low">Low (faster)</option>
+          </select>
+        </div>
+        <div class="pause-row">
+          <span>📱 {{ t('TOUCH VEZÉRLÉS', 'TOUCH CONTROLS') }}</span>
+          <button type="button" class="pause-toggle" (click)="toggleTouchControls()">{{ showTouchControls ? 'ON' : 'OFF' }}</button>
+        </div>
+        <div class="pause-row">
+          <span>⌨️ {{ t('BILLENTYŰK', 'KEY BINDINGS') }}</span>
+          <button type="button" class="pause-toggle" (click)="showKeybinds = !showKeybinds; rebindingAction = null">{{ showKeybinds ? '▲' : '▼' }}</button>
+        </div>
+        <div class="keybinds" *ngIf="showKeybinds">
+          <div class="pause-row" *ngFor="let action of controlActions">
+            <span>{{ actionLabel(action) }}</span>
+            <button type="button" class="pause-toggle keybind-btn" [class.listening]="rebindingAction === action" (click)="startRebind(action)">
+              {{ rebindingAction === action ? t('Nyomj egy gombot...', 'Press a key...') : keyLabel(action) }}
+            </button>
+          </div>
+          <button type="button" class="pause-toggle" (click)="resetBindings()">{{ t('Alaphelyzet', 'Reset to default') }}</button>
+        </div>
+        <div class="pause-row">
+          <span>❓ {{ t('HOGYAN JÁTSSZ', 'HOW TO PLAY') }}</span>
+          <button type="button" class="pause-toggle" (click)="openTutorial()">{{ t('MEGNYIT', 'OPEN') }}</button>
+        </div>
+      </div>
+      <button (click)="togglePause()" class="resume-btn">▶️ RESUME</button>
+    </div>
+  </div>
+  
+  <div class="achievement-notification" *ngIf="currentUnlockNotification">
+    <div class="achievement-badge">
+      <div class="achievement-icon">{{ currentUnlockNotification.icon }}</div>
+      <div class="achievement-info">
+        <div class="achievement-title">🎉 ACHIEVEMENT UNLOCKED!</div>
+        <div class="achievement-name">{{ currentUnlockNotification.title }}</div>
+        <div class="achievement-desc">{{ currentUnlockNotification.description }}</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="achievements-panel" *ngIf="showAchievements">
+    <div class="achievements-header">
+      <h2>🎖️ ACHIEVEMENTS 🎖️</h2>
+      <button (click)="toggleAchievements()" class="close-btn">✕</button>
+    </div>
+    <div class="achievements-progress">
+      <span>{{ unlockedCount }} / {{ achievements.length }} Unlocked</span>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="(unlockedCount / achievements.length) * 100"></div>
+      </div>
+    </div>
+    <div class="achievements-list">
+      <div 
+        *ngFor="let achievement of achievements" 
+        class="achievement-item"
+        [class.unlocked]="achievement.unlocked"
+        [class.locked]="!achievement.unlocked">
+        <div class="achievement-item-icon">{{ achievement.icon }}</div>
+        <div class="achievement-item-info">
+          <div class="achievement-item-title">{{ achievement.title }}</div>
+          <div class="achievement-item-desc">{{ achievement.description }}</div>
+        </div>
+        <div class="achievement-status">
+          {{ achievement.unlocked ? '✓' : '🔒' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skills Panel -->
+  <div class="skills-panel" *ngIf="showSkills">
+    <div class="skills-header">
+      <h2>🌟 SKILLS 🌟</h2>
+      <button (click)="toggleSkills()" class="close-btn">✕</button>
+    </div>
+    <div class="skills-points">
+      <span>Available Points: <span class="points-value">{{skillPoints}}</span></span>
+    </div>
+    <div class="skills-list">
+      <div *ngFor="let skill of skills" class="skill-item">
+        <div class="skill-icon">{{skill.icon}}</div>
+        <div class="skill-info">
+          <div class="skill-name">{{skill.name}}</div>
+          <div class="skill-desc">{{skill.description}}</div>
+          <div class="skill-level">
+            <span class="level-text">Level: {{skill.currentLevel}}/{{skill.maxLevel}}</span>
+            <div class="level-bar">
+              <div class="level-fill" [style.width.%]="(skill.currentLevel / skill.maxLevel) * 100"></div>
+            </div>
+          </div>
+        </div>
+        <button 
+          class="upgrade-btn" 
+          (click)="upgradeSkill(skill.id)"
+          [disabled]="skill.currentLevel >= skill.maxLevel || skillPoints < skill.cost">
+          <span *ngIf="skill.currentLevel < skill.maxLevel">↑ {{skill.cost}}</span>
+          <span *ngIf="skill.currentLevel >= skill.maxLevel">MAX</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Shop Panel -->
+  <div class="shop-panel" *ngIf="showShop">
+    <div class="shop-header">
+      <h2>🛒 {{ language === 'hu' ? 'BOLT' : 'SHOP' }} 🛒</h2>
+      <button (click)="showShop = false" class="close-btn">✕</button>
+    </div>
+    <div class="shop-coins">
+      <span>💰 {{ language === 'hu' ? 'Érmék:' : 'Coins:' }} <span class="coins-value">{{totalCoins}}</span></span>
+      <div class="cloud-save-indicator" *ngIf="authService.isLoggedIn">
+        <span>☁️ {{ language === 'hu' ? 'Felhő mentés aktív' : 'Cloud save active' }}</span>
+      </div>
+    </div>
+    <div class="shop-list">
+      <div *ngFor="let upgrade of permanentUpgrades" class="shop-item">
+        <div class="shop-item-icon">
+          {{ upgrade.effect === 'maxHealth' ? '❤️' : 
+             upgrade.effect === 'damage' ? '⚔️' : 
+             upgrade.effect === 'speed' ? '👟' : 
+             upgrade.effect === 'fireRate' ? '🔫' : 
+             upgrade.effect === 'coinMultiplier' ? '💰' : 
+             upgrade.effect === 'startingWeaponLevel' ? '🎯' : 
+             upgrade.effect === 'healthRegen' ? '💚' : 
+             upgrade.effect === 'shieldChance' ? '🛡️' : '⭐' }}
+        </div>
+        <div class="shop-item-info">
+          <div class="shop-item-name">{{upgrade.name}}</div>
+          <div class="shop-item-desc">{{upgrade.description}}</div>
+          <div class="shop-item-level">
+            <span class="level-text">{{ language === 'hu' ? 'Szint:' : 'Level:' }} {{upgrade.level}}/{{upgrade.maxLevel}}</span>
+            <div class="level-bar">
+              <div class="level-fill" [style.width.%]="(upgrade.level / upgrade.maxLevel) * 100"></div>
+            </div>
+          </div>
+        </div>
+        <button 
+          class="shop-buy-btn" 
+          (click)="purchaseUpgrade(upgrade)"
+          [disabled]="!canAffordUpgrade(upgrade)">
+          <span *ngIf="upgrade.level < upgrade.maxLevel">💰 {{getUpgradeCost(upgrade)}}</span>
+          <span *ngIf="upgrade.level >= upgrade.maxLevel">MAX</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Admin Panel -->
+  <div class="admin-panel" *ngIf="showAdminPanel && authService.isAdmin">
+    <div class="admin-header">
+      <h2>⚙️ ADMIN PANEL ⚙️</h2>
+      <button (click)="toggleAdminPanel()" class="close-btn">✕</button>
+    </div>
+    
+    <div class="admin-tabs">
+      <button 
+        class="admin-tab-btn" 
+        [class.active]="adminTab === 'stats'"
+        (click)="adminTab = 'stats'; loadAdminStats()">
+        📊 STATS
+      </button>
+      <button 
+        class="admin-tab-btn" 
+        [class.active]="adminTab === 'users'"
+        (click)="adminTab = 'users'; loadAdminUsers()">
+        👥 USERS
+      </button>
+      <button 
+        class="admin-tab-btn" 
+        [class.active]="adminTab === 'announce'"
+        (click)="adminTab = 'announce'">
+        📢 ANNOUNCE
+      </button>
+      <button 
+        class="admin-tab-btn" 
+        [class.active]="adminTab === 'actions'"
+        (click)="adminTab = 'actions'">
+        ⚡ ACTIONS
+      </button>
+    </div>
+    
+    <div class="admin-content">
+      <!-- Stats Tab -->
+      <div *ngIf="adminTab === 'stats'" class="admin-stats">
+        <div class="stats-header">
+          <h3>📊 Statistics</h3>
+          <button (click)="loadAdminStats()" class="refresh-btn">🔄 Refresh</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">{{adminStats.totalUsers}}</div>
+            <div class="stat-label">Total Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎮</div>
+            <div class="stat-value">{{adminStats.totalScores}}</div>
+            <div class="stat-label">Total Games</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-value">{{adminStats.topScore}}</div>
+            <div class="stat-label">Top Score</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💀</div>
+            <div class="stat-value">{{adminStats.totalKills}}</div>
+            <div class="stat-label">Total Kills</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🌊</div>
+            <div class="stat-value">{{adminStats.maxWave}}</div>
+            <div class="stat-label">Max Wave</div>
+          </div>
+        </div>
+        
+        <h3>🚨 Suspicious Scores</h3>
+        <div class="suspicious-list">
+          <div *ngFor="let score of adminStats.suspiciousScores" class="suspicious-item">
+            <span>{{score.username}}</span>
+            <span>Score: {{score.score}}</span>
+            <span>Wave: {{score.wave}}</span>
+            <button (click)="deleteScore(score.id)" class="delete-btn">🗑️</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Users Tab -->
+      <div *ngIf="adminTab === 'users'" class="admin-users">
+        <div class="stats-header">
+          <h3>👥 Users</h3>
+          <button (click)="loadAdminUsers()" class="refresh-btn">🔄 Refresh</button>
+        </div>
+        <div class="user-list">
+          <div *ngFor="let user of adminUsers" class="user-item">
+            <div class="user-info-admin">
+              <span class="user-id">#{{user.id}}</span>
+              <span class="user-name">{{user.username}}</span>
+              <span class="user-email">{{user.email || 'No email'}}</span>
+              <span class="user-scores">{{user.score_count}} games</span>
+              <span class="user-best">Best: {{user.best_score || 0}}</span>
+            </div>
+            <div class="user-actions">
+              <button 
+                (click)="openChangePasswordModal(user)" 
+                class="change-pass-btn">
+                🔑 Change Password
+              </button>
+              <button 
+                *ngIf="user.id !== 1" 
+                (click)="deleteUser(user.id)" 
+                class="delete-btn">
+                🗑️ DELETE
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Announcement Tab -->
+      <div *ngIf="adminTab === 'announce'" class="admin-announce">
+        <h3>📢 Global Announcement</h3>
+        <textarea 
+          [(ngModel)]="announcementText" 
+          placeholder="Enter announcement message..."
+          class="announce-textarea"></textarea>
+        <div class="announce-buttons">
+          <button (click)="setAnnouncement()" class="set-announce-btn">📢 SET ANNOUNCEMENT</button>
+          <button (click)="clearAnnouncement()" class="clear-announce-btn">❌ CLEAR</button>
+        </div>
+      </div>
+      
+      <!-- Actions Tab -->
+      <div *ngIf="adminTab === 'actions'" class="admin-actions">
+        <h3>⚡ Admin Actions</h3>
+        <div class="action-section">
+          <div class="action-card danger-action">
+            <div class="action-icon">💰</div>
+            <div class="action-info">
+              <h4>Reset All Shop Progress</h4>
+              <p>This will reset coins and permanent upgrades for ALL users. This action cannot be undone!</p>
+            </div>
+            <button (click)="resetAllShopProgress()" class="danger-btn">
+              🗑️ RESET ALL SHOP DATA
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="instructions" *ngIf="!gameStarted && !gameOver">
+    <div class="language-switcher">
+      <button 
+        class="lang-btn" 
+        [class.active]="language === 'hu'"
+        (click)="language = 'hu'">
+        🇭🇺 HU
+      </button>
+      <button 
+        class="lang-btn" 
+        [class.active]="language === 'en'"
+        (click)="language = 'en'">
+        🇬🇧 EN
+      </button>
+    </div>
+    
+    <h1>🎮 BULLET HELL SURVIVOR 🎮</h1>
+    
+    <!-- Player Level Badge -->
+    <div class="player-level-badge" *ngIf="isLoggedIn">
+      <div class="level-icon">⭐</div>
+      <div class="level-info">
+        <div class="level-number">{{ language === 'hu' ? 'Szint' : 'Level' }} {{ playerLevel }}</div>
+        <div class="level-title">{{ getPlayerTitle() }}</div>
+        <div class="xp-bar-main">
+          <div class="xp-fill-main" [style.width.%]="(playerXp / xpForNextLevel) * 100"></div>
+        </div>
+        <div class="xp-text">{{ playerXp }} / {{ xpForNextLevel }} XP</div>
+      </div>
+    </div>
+
+    <!-- Daily Login Reward -->
+    <div class="daily-reward-section" *ngIf="isLoggedIn && !dailyRewardClaimed">
+      <div class="daily-reward-card" (click)="claimDailyReward()">
+        <div class="daily-reward-glow"></div>
+        <div class="daily-reward-icon">🎁</div>
+        <div class="daily-reward-text">
+          <div class="daily-title" *ngIf="language === 'hu'">NAPI JUTALOM!</div>
+          <div class="daily-title" *ngIf="language === 'en'">DAILY REWARD!</div>
+          <div class="daily-streak">🔥 {{ dailyStreak }} {{ language === 'hu' ? 'napos sorozat' : 'day streak' }}</div>
+          <div class="daily-coins">💰 +{{ getDailyRewardAmount() }} {{ language === 'hu' ? 'érme' : 'coins' }}</div>
+          <div class="daily-xp">⭐ +{{ getDailyRewardXp() }} XP</div>
+        </div>
+        <div class="daily-claim-btn">{{ language === 'hu' ? 'KATTINTS AZ ÁTVÉTELHEZ!' : 'CLICK TO CLAIM!' }}</div>
+      </div>
+    </div>
+    <div class="daily-reward-claimed" *ngIf="isLoggedIn && dailyRewardClaimed">
+      <span>✅ {{ language === 'hu' ? 'Napi jutalom átvéve!' : 'Daily reward claimed!' }} 🔥 {{ dailyStreak }} {{ language === 'hu' ? 'nap' : 'days' }}</span>
+    </div>
+
+    <!-- Daily Challenge -->
+    <div class="daily-challenge-section">
+      <div class="daily-challenge-card">
+        <div class="daily-challenge-header">
+          <span class="daily-icon">🏅</span>
+          <span *ngIf="language === 'hu'">NAPI KIHÍVÁS</span>
+          <span *ngIf="language === 'en'">DAILY CHALLENGE</span>
+          <span class="daily-icon">🏅</span>
+        </div>
+        <div class="daily-challenge-desc">
+          <span>{{ getDailyChallengeDescription() }}</span>
+        </div>
+        <div class="daily-challenge-reward">
+          <span *ngIf="language === 'hu'">Jutalom: 💰 x3 érmék + ⭐ 50 XP</span>
+          <span *ngIf="language === 'en'">Reward: 💰 x3 coins + ⭐ 50 XP</span>
+        </div>
+        <div class="daily-challenge-status" *ngIf="dailyChallengeCompleted">
+          <span>✅ {{ language === 'hu' ? 'TELJESÍTVE!' : 'COMPLETED!' }}</span>
+        </div>
+        <button 
+          (click)="startDailyChallenge()" 
+          class="daily-challenge-play-btn"
+          *ngIf="!dailyChallengeCompleted">
+          {{ language === 'hu' ? '▶️ KIHÍVÁS INDÍTÁSA' : '▶️ START CHALLENGE' }}
+        </button>
+      </div>
+    </div>
+    
+    <!-- Hungarian Description -->
+    <div class="game-description" *ngIf="language === 'hu'">
+      <p><strong>Kemény bullet hell akció!</strong> Élj túl végtelen ellenséges hullámokat!</p>
+      <p>🎯 Különböző ellenség típusok • 💪 Boss minden 5. hullámban • ⚡ Power-upok és fejlesztések</p>
+    </div>
+
+    <!-- English Description -->
+    <div class="game-description" *ngIf="language === 'en'">
+      <p><strong>Hardcore bullet hell action!</strong> Survive endless enemy waves!</p>
+      <p>🎯 Different enemy types • 💪 Boss every 5 waves • ⚡ Power-ups and upgrades</p>
+    </div>
+
+    <!-- Login/Register Section -->
+    <div class="auth-section" *ngIf="!isLoggedIn">
+      <h2 *ngIf="language === 'hu'">🔐 Bejelentkezés / Regisztráció</h2>
+      <h2 *ngIf="language === 'en'">🔐 Login / Register</h2>
+      <div class="auth-tabs">
+        <button 
+          class="auth-tab-btn" 
+          [class.active]="authMode === 'login'"
+          (click)="authMode = 'login'">
+          {{ language === 'hu' ? 'BEJELENTKEZÉS' : 'LOGIN' }}
+        </button>
+        <button 
+          class="auth-tab-btn" 
+          [class.active]="authMode === 'register'"
+          (click)="authMode = 'register'">
+          {{ language === 'hu' ? 'REGISZTRÁCIÓ' : 'REGISTER' }}
+        </button>
+      </div>
+      
+      <div class="auth-form">
+        <div class="auth-error" *ngIf="authError">{{ authError }}</div>
+        
+        <input 
+          type="text" 
+          [(ngModel)]="authUsername" 
+          [placeholder]="language === 'hu' ? 'Felhasználónév' : 'Username'"
+          class="auth-input"
+          maxlength="15">
+        
+        <input 
+          type="password" 
+          [(ngModel)]="authPassword" 
+          [placeholder]="language === 'hu' ? 'Jelszó' : 'Password'"
+          class="auth-input"
+          (keyup.enter)="handleAuth()">
+        
+        <input 
+          *ngIf="authMode === 'register'"
+          type="email" 
+          [(ngModel)]="authEmail" 
+          [placeholder]="language === 'hu' ? 'Email (opcionális)' : 'Email (optional)'"
+          class="auth-input">
+        
+        <button (click)="handleAuth()" class="auth-submit-btn">
+          {{ authMode === 'login' ? (language === 'hu' ? 'BEJELENTKEZÉS' : 'LOGIN') : (language === 'hu' ? 'REGISZTRÁCIÓ' : 'REGISTER') }}
+        </button>
+        
+        <p class="auth-info" *ngIf="language === 'hu'">A ranglista mentéséhez bejelentkezés szükséges!</p>
+        <p class="auth-info" *ngIf="language === 'en'">Login required to save your score on the leaderboard!</p>
+      </div>
+    </div>
+    
+    <div class="user-info" *ngIf="isLoggedIn">
+      <p>
+        👤 {{ language === 'hu' ? 'Bejelentkezve:' : 'Logged in as:' }} <strong>{{ currentUsername }}</strong>
+        <span class="admin-badge" *ngIf="authService.isAdmin">⭐ ADMIN</span>
+      </p>
+      <button (click)="handleLogout()" class="logout-btn">{{ language === 'hu' ? 'Kijelentkezés' : 'Logout' }}</button>
+    </div>
+    
+    <!-- Character Customization -->
+    <div class="customization-section">
+      <h2 *ngIf="language === 'hu'">🎨 Karakter Testreszabás</h2>
+      <h2 *ngIf="language === 'en'">🎨 Character Customization</h2>
+      <div class="customization-grid">
+        <div class="customization-option">
+          <h3 *ngIf="language === 'hu'">Karakter Szín:</h3>
+          <h3 *ngIf="language === 'en'">Character Color:</h3>
+          <div class="color-options">
+            <button 
+              *ngFor="let color of colorOptions"
+              class="color-btn"
+              [style.background]="color.value"
+              [style.box-shadow]="'0 0 10px ' + color.glowColor"
+              [class.selected]="playerCustomization.color === color.value"
+              (click)="selectColor(color.value)"
+              [title]="color.name">
+              {{ playerCustomization.color === color.value ? '✓' : '' }}
+            </button>
+          </div>
+        </div>
+        <div class="customization-option">
+          <h3>Forma:</h3>
+          <div class="shape-options">
+            <button 
+              class="shape-btn"
+              [class.selected]="playerCustomization.shape === 'square'"
+              (click)="selectShape('square')">
+              ⬛ Négyzet
+            </button>
+            <button 
+              class="shape-btn"
+              [class.selected]="playerCustomization.shape === 'circle'"
+              (click)="selectShape('circle')">
+              ⭕ Kör
+            </button>
+            <button 
+              class="shape-btn"
+              [class.selected]="playerCustomization.shape === 'triangle'"
+              (click)="selectShape('triangle')">
+              🔺 Háromszög
+            </button>
+            <button 
+              class="shape-btn"
+              [class.selected]="playerCustomization.shape === 'diamond'"
+              (click)="selectShape('diamond')">
+              💎 Gyémánt
+            </button>
+          </div>
+        </div>
+        <div class="customization-option full-width">
+          <h3 *ngIf="language === 'hu'">Háttér Szín:</h3>
+          <h3 *ngIf="language === 'en'">Background Color:</h3>
+          <div class="color-options">
+            <button 
+              *ngFor="let bgColor of backgroundColorOptions"
+              class="color-btn"
+              [style.background]="bgColor.value"
+              [style.box-shadow]="'0 0 10px ' + bgColor.glowColor"
+              [class.selected]="playerCustomization.backgroundColor === bgColor.value"
+              (click)="selectBackgroundColor(bgColor.value)"
+              [title]="bgColor.name">
+              {{ playerCustomization.backgroundColor === bgColor.value ? '✓' : '' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="customization-preview">
+        <p *ngIf="language === 'hu'">Előnézet:</p>
+        <p *ngIf="language === 'en'">Preview:</p>
+        <canvas #previewCanvas width="100" height="100"></canvas>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <h2>{{ t('Irányítás:', 'Controls:') }}</h2>
+      <p><strong>{{ keyLabel('up') }} {{ keyLabel('left') }} {{ keyLabel('down') }} {{ keyLabel('right') }}</strong> {{ t('vagy', 'or') }} <strong>{{ t('Nyílbillentyűk', 'Arrow Keys') }}</strong> - {{ t('Mozgás', 'Move') }}</p>
+      <p><strong>{{ keyLabel('shoot') }}</strong> - {{ t('Lővés', 'Shoot') }}</p>
+      <p><strong>{{ t('Egér', 'Mouse') }}</strong> - {{ t('Célzás iránya', 'Aim direction') }}</p>
+      <p><strong>{{ keyLabel('ultimate') }}</strong> - Ultimate (15s cooldown)</p>
+      <p><strong>{{ keyLabel('dash') }}</strong> - Dash</p>
+      <p><strong>{{ keyLabel('slowmo') }}</strong> - Slow Motion (10+ kill streak)</p>
+      <p>{{ t('A billentyűket a szünet menüben (ESC) átállíthatod.', 'You can rebind keys in the pause menu (ESC).') }}</p>
+    </div>
+    <div class="gameplay-info">
+      <h2 *ngIf="language === 'hu'">Gameplay:</h2>
+      <h2 *ngIf="language === 'en'">Gameplay:</h2>
+      <p *ngIf="language === 'hu'">• Ölj ellenségeket és szerezz pontokat</p>
+      <p *ngIf="language === 'en'">• Kill enemies and earn points</p>
+      <p *ngIf="language === 'hu'">• Minden 25 kill után fejlődik a fegyvered (max 5 shot)</p>
+      <p *ngIf="language === 'en'">• Your weapon upgrades every 25 kills (max 5 shots)</p>
+      <p *ngIf="language === 'hu'">• Tartsd fenn a combót a magasabb pontszámért (max 5x)</p>
+      <p *ngIf="language === 'en'">• Maintain combo for higher score (max 5x)</p>
+      <p *ngIf="language === 'hu'">• Boss minden 5. hullámban - nehezedő kihívás!</p>
+      <p *ngIf="language === 'en'">• Boss every 5 waves - increasing challenge!</p>
+      <p *ngIf="language === 'hu'">• Power-upok: ❤️ Élet, ⚡ Sebesség, 🔫 Tűzgyorsaság, 🛡️ Pajzs</p>
+      <p *ngIf="language === 'en'">• Power-ups: ❤️ Health, ⚡ Speed, 🔫 Fire Rate, 🛡️ Shield</p>
+      <p *ngIf="language === 'hu'">• A nehézség minden hullámmal nő (+20% HP, +8% sebesség)</p>
+      <p *ngIf="language === 'en'">• Difficulty increases each wave (+20% HP, +8% speed)</p>
+    </div>
+    <div class="enemy-types">
+      <h2 *ngIf="language === 'hu'">Ellenség Típusok:</h2>
+      <h2 *ngIf="language === 'en'">Enemy Types:</h2>
+      <p *ngIf="language === 'hu'"><span class="enemy-basic">█</span> Alap - Lassú, gyenge</p>
+      <p *ngIf="language === 'en'"><span class="enemy-basic">█</span> Basic - Slow, weak</p>
+      <p *ngIf="language === 'hu'"><span class="enemy-fast">█</span> Gyors - Vilámgyors, alacsony élet</p>
+      <p *ngIf="language === 'en'"><span class="enemy-fast">█</span> Fast - Quick, low HP</p>
+      <p><span style="color:#00c8a0">█</span> {{ t('Szétváló - Két gyors darabra esik szét', 'Splitter - Breaks into two fast pieces') }}</p>
+      <p *ngIf="language === 'hu'"><span class="enemy-tank">█</span> Tank - Lassú, magas élet</p>
+      <p *ngIf="language === 'en'"><span class="enemy-tank">█</span> Tank - Slow, high HP</p>
+      <p *ngIf="language === 'hu'"><span class="enemy-shooter">█</span> Lővöldöző - Lő rád!</p>
+      <p *ngIf="language === 'en'"><span class="enemy-shooter">█</span> Shooter - Shoots at you!</p>
+      <p *ngIf="language === 'hu'"><span class="enemy-boss">█</span> Boss - Hatalmas élet, mintazás lövések</p>
+      <p *ngIf="language === 'en'"><span class="enemy-boss">█</span> Boss - Massive HP, shoots patterns</p>
+    </div>
+    
+    <div class="gamemode-selection">
+      <h2 *ngIf="language === 'hu'">🎮 Válassz Játékmódot!</h2>
+      <h2 *ngIf="language === 'en'">🎮 Choose Game Mode!</h2>
+      <div class="gamemode-grid">
+        <button (click)="selectGameMode('classic')" 
+                [class.selected]="currentGameMode === 'classic'"
+                class="gamemode-card">
+          <div class="gamemode-icon">🎯</div>
+          <div class="gamemode-name" *ngIf="language === 'hu'">Klasszikus</div>
+          <div class="gamemode-name" *ngIf="language === 'en'">Classic</div>
+          <div class="gamemode-desc" *ngIf="language === 'hu'">Boss minden 5. hullámban</div>
+          <div class="gamemode-desc" *ngIf="language === 'en'">Boss every 5 waves</div>
+        </button>
+        <button (click)="selectGameMode('boss_rush')" 
+                [class.selected]="currentGameMode === 'boss_rush'"
+                class="gamemode-card">
+          <div class="gamemode-icon">👹</div>
+          <div class="gamemode-name">Boss Rush</div>
+          <div class="gamemode-desc" *ngIf="language === 'hu'">Csak bossok folyamatosan!</div>
+          <div class="gamemode-desc" *ngIf="language === 'en'">Non-stop bosses only!</div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="difficulty-selection">
+      <h2 *ngIf="language === 'hu'">⚔️ Válassz Nehézséget!</h2>
+      <h2 *ngIf="language === 'en'">⚔️ Choose Difficulty!</h2>
+      <div class="difficulty-grid">
+        <button 
+          *ngFor="let diff of difficulties"
+          (click)="selectDifficulty(diff)"
+          [class.selected]="currentDifficulty === diff"
+          class="difficulty-card">
+          <div class="difficulty-icon">{{ getDifficultyIcon(diff) }}</div>
+          <div class="difficulty-name">{{ getDifficultyName(diff) }}</div>
+          <div class="difficulty-desc">{{ getDifficultyDesc(diff) }}</div>
+          <div class="difficulty-rewards">{{ getDifficultyReward(diff) }}</div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="weapon-selection-menu">
+      <h2 *ngIf="language === 'hu'">🔫 Válassz fegyvert!</h2>
+      <h2 *ngIf="language === 'en'">🔫 Choose Your Weapon!</h2>
+      <div class="weapon-grid">
+        <button *ngFor="let weapon of weapons" 
+                (click)="selectWeapon(weapon)"
+                [class.selected]="currentWeapon.id === weapon.id"
+                class="weapon-card">
+          <div class="weapon-name">{{ getWeaponName(weapon.id) }}</div>
+          <div class="weapon-desc">{{ getWeaponDesc(weapon.id) }}</div>
+          <div class="weapon-stats">
+            <span>⚡ {{ 1000 / weapon.fireRate | number:'1.1-1' }}/s</span>
+            <span>💥 {{ weapon.damage }}</span>
+            <span>🎯 {{ weapon.bulletCount }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+    
+    <button (click)="startGame()" class="start-btn" *ngIf="language === 'hu'">JÁTÉK INDÍTÁSA</button>
+    <button (click)="startGame()" class="start-btn" *ngIf="language === 'en'">START GAME</button>
+    <div class="copyright">
+      <p>© 2025 Bullet Hell Survivor. All rights reserved.</p>
+      <p>Made with ❤️ by <a href="https://ko-fi.com/szeretemakiflit" target="_blank">szeretemakiflit</a></p>
+    </div>
+    
+  </div>
+</div>
