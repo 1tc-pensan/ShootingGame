@@ -81,3 +81,55 @@ export type RunStacks = Record<RunUpgradeId, number>;
 export function emptyRunStacks(): RunStacks {
   return { dmg: 0, firerate: 0, speed: 0, maxhp: 0, multishot: 0, pierce: 0, vampire: 0, parry: 0, dash: 0, ult: 0 };
 }
+
+export type SynergyId = 'volley' | 'overdrive' | 'bulwark' | 'bloodrush' | 'shockdash';
+
+export interface SynergyDef {
+  id: SynergyId;
+  icon: string;
+  name: Text;
+  desc: Text;
+  requires: Partial<Record<RunUpgradeId, number>>;
+}
+
+export const SYNERGIES: SynergyDef[] = [
+  {
+    id: 'volley',
+    icon: '🎯',
+    name: { hu: 'Átütő sorozat', en: 'Piercing Volley' },
+    desc: { hu: 'Minden lövedék +2 ellenségen megy át', en: 'Every bullet pierces +2 extra enemies' },
+    requires: { pierce: 1, multishot: 1 }
+  },
+  {
+    id: 'overdrive',
+    icon: '💫',
+    name: { hu: 'Túlhajtás', en: 'Overdrive' },
+    desc: { hu: 'Minden 8. lövés háromszoros sebzésű, nagy töltet', en: 'Every 8th shot is a huge triple-damage charge' },
+    requires: { firerate: 2, dmg: 2 }
+  },
+  {
+    id: 'bulwark',
+    icon: '🏰',
+    name: { hu: 'Bástya', en: 'Bulwark' },
+    desc: { hu: 'Sikeres parry: +3 HP és rövid sérthetetlenség', en: 'Successful parry: +3 HP and brief invulnerability' },
+    requires: { parry: 1, maxhp: 1 }
+  },
+  {
+    id: 'bloodrush',
+    icon: '🩸',
+    name: { hu: 'Vérszomj', en: 'Bloodrush' },
+    desc: { hu: 'A vámpír gyógyulás megduplázódik', en: 'Vampire healing is doubled' },
+    requires: { vampire: 1, speed: 1 }
+  },
+  {
+    id: 'shockdash',
+    icon: '⚡',
+    name: { hu: 'Sokkoló dash', en: 'Shock Dash' },
+    desc: { hu: 'Dash indításkor lökéshullám sebzi a közeli ellenségeket', en: 'Dashing sends a shockwave that damages nearby enemies' },
+    requires: { dash: 1, ult: 1 }
+  }
+];
+
+export function isSynergyActive(def: SynergyDef, stacks: RunStacks): boolean {
+  return (Object.entries(def.requires) as [RunUpgradeId, number][]).every(([id, n]) => stacks[id] >= n);
+}

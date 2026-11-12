@@ -43,6 +43,7 @@ export interface Bullet {
   damage: number;
   fromPlayer: boolean;
   reflected?: boolean;
+  overcharged?: boolean;
 }
 
 export interface Enemy {
@@ -170,4 +171,30 @@ export interface ColorOption {
   name: string;
   value: string;
   glowColor: string;
+}
+
+export interface LifetimeStats {
+  games: number;
+  totalScore: number;
+  bestScore: number;
+  bestWave: number;
+  bestKills: number;
+  totalKills: number;
+  playSeconds: number;
+  bossKills: number;
+  bulletsFired: number;
+  bulletsReflected: number;
+  weaponGames: Record<string, number>;
+  mutatorRuns: Record<string, number>;
+  upgradePicks: Record<string, number>;
+  synergiesUnlocked: Record<string, number>;
+  bestByDifficulty: Record<string, number>;
+}
+
+export function emptyLifetimeStats(): LifetimeStats {
+  return {
+    games: 0, totalScore: 0, bestScore: 0, bestWave: 0, bestKills: 0, totalKills: 0,
+    playSeconds: 0, bossKills: 0, bulletsFired: 0, bulletsReflected: 0,
+    weaponGames: {}, mutatorRuns: {}, upgradePicks: {}, synergiesUnlocked: {}, bestByDifficulty: {}
+  };
 }

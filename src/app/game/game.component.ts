@@ -7,13 +7,14 @@ import { AuthService } from '../auth/auth.service';
 import { SoundService } from './sound.service';
 import {
   ActiveMutatorId, MUTATORS, MUTATOR_IDS, MutatorDef, MutatorId, RUN_UPGRADES, RunStacks, RunUpgradeDef, RunUpgradeId,
-  emptyRunStacks, mutatorDef
+  SYNERGIES, SynergyDef, SynergyId, emptyRunStacks, isSynergyActive, mutatorDef
 } from './game-mutators';
 import {
   ACTION_LABELS, ARROW_ALTERNATIVES, CONTROL_ACTIONS, ControlAction, DEFAULT_BINDINGS,
   RESERVED_KEYS, keyLabel, loadBindings, saveBindings
 } from './game-controls';
 import {
+  LifetimeStats, emptyLifetimeStats,
   LeaderboardMode,
   GraphicsQuality,
   Difficulty,
@@ -220,6 +221,17 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   showUpgradePicker = false;
   upgradeChoices: RunUpgradeDef[] = [];
   private lastPickerWave = 1;
+
+  // Synergies between run upgrades
+  readonly synergies: SynergyDef[] = SYNERGIES;
+  synergyToast: SynergyDef | null = null;
+  private synergyToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private shotCounter = 0;
+
+  // Lifetime statistics (persisted locally) + counters for the current run
+  lifetime: LifetimeStats = emptyLifetimeStats();
+  showStats = false;
+  private runStats = { fired: 0, reflected: 0, bossKills: 0, ticks: 0, picks: {} as Record<string, number>, synergies: [] as string[] };
 
   // Tutorial
   showTutorial = false;
@@ -878,6 +890,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (reflected > 0) {
+      this.runStats.reflected += reflected;
+      if (this.hasSynergy('bulwark')) {
+        this.player.health = Math.min(this.player.maxHealth, this.player.health + 3);
+        this.player.invulnerable = Math.max(this.player.invulnerable, 40);
+        this.createDamageNumber(cx, cy - 60, 3, '#00ff88');
+      }
       this.parryCooldown = Math.min(this.parryCooldown, 15);
       this.ultimateCharge = Math.min(this.ultimateMaxCharge, this.ultimateCharge + 4 * reflected);
       this.score += Math.floor(15 * reflected * this.mutatorScoreMultiplier);
@@ -888,6 +906,107 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sound.play('parry');
       this.parryTimer = Math.max(this.parryTimer, 4);
     }
+  }
+
+  // --- Synergies ---
+  get activeSynergies(): SynergyDef[] {
+    return SYNERGIES.filter(s => isSynergyActive(s, this.runStacks));
+  }
+
+  hasSynergy(id: SynergyId): boolean {
+    const def = SYNERGIES.find(s => s.id === id);
+    return !!def && isSynergyActive(def, this.runStacks);
+  }
+
+  // Synergy that picking this upgrade would newly complete (shown on the card)
+  completesSynergy(upgrade: RunUpgradeDef): SynergyDef | undefined {
+    const after = { ...this.runStacks, [upgrade.id]: this.runStacks[upgrade.id] + 1 };
+    return SYNERGIES.find(s => !isSynergyActive(s, this.runStacks) && isSynergyActive(s, after));
+  }
+
+  // --- Lifetime statistics ---
+  private loadLifetimeStats() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('lifetimeStats') || 'null');
+      if (saved && typeof saved === 'object') {
+        this.lifetime = { ...emptyLifetimeStats(), ...saved };
+      }
+    } catch { /* ignore corrupt stats */ }
+  }
+
+  private resetRunStats() {
+    this.runStats = { fired: 0, reflected: 0, bossKills: 0, ticks: 0, picks: {}, synergies: [] };
+  }
+
+  private recordRunStats() {
+    const s = this.lifetime;
+    s.games++;
+    s.totalScore += this.score;
+    s.totalKills += this.kills;
+    s.bestScore = Math.max(s.bestScore, this.score);
+    s.bestWave = Math.max(s.bestWave, this.wave);
+    s.bestKills = Math.max(s.bestKills, this.kills);
+    s.playSeconds += Math.round(this.runStats.ticks / 60);
+    s.bossKills += this.runStats.bossKills;
+    s.bulletsFired += this.runStats.fired;
+    s.bulletsReflected += this.runStats.reflected;
+    const bump = (rec: Record<string, number>, key: string, n = 1) => { rec[key] = (rec[key] ?? 0) + n; };
+    bump(s.weaponGames, this.currentWeapon.id);
+    bump(s.mutatorRuns, this.activeMutator);
+    for (const [id, n] of Object.entries(this.runStats.picks)) bump(s.upgradePicks, id, n);
+    for (const id of this.runStats.synergies) bump(s.synergiesUnlocked, id);
+    s.bestByDifficulty[this.currentDifficulty] = Math.max(s.bestByDifficulty[this.currentDifficulty] ?? 0, this.score);
+    localStorage.setItem('lifetimeStats', JSON.stringify(s));
+  }
+
+  toggleStats() {
+    this.showStats = !this.showStats;
+  }
+
+  favoriteOf(record: Record<string, number>): { key: string; count: number } | null {
+    let best: { key: string; count: number } | null = null;
+    for (const [key, count] of Object.entries(record)) {
+      if (!best || count > best.count) best = { key, count };
+    }
+    return best;
+  }
+
+  get favoriteWeaponLabel(): string {
+    const f = this.favoriteOf(this.lifetime.weaponGames);
+    return f ? `${this.getWeaponName(f.key)} (${f.count}x)` : '-';
+  }
+
+  get favoriteMutatorLabel(): string {
+    const runs = { ...this.lifetime.mutatorRuns };
+    delete runs['none'];
+    const f = this.favoriteOf(runs);
+    return f ? `${this.mutatorLabel(f.key as MutatorId)} (${f.count}x)` : '-';
+  }
+
+  get favoriteUpgradeLabel(): string {
+    const f = this.favoriteOf(this.lifetime.upgradePicks);
+    const def = f ? RUN_UPGRADES.find(u => u.id === f.key) : undefined;
+    return f && def ? `${def.icon} ${this.t(def.name.hu, def.name.en)} (${f.count}x)` : '-';
+  }
+
+  get synergiesUnlockedCount(): number {
+    return Object.keys(this.lifetime.synergiesUnlocked).length;
+  }
+
+  get averageScore(): number {
+    return this.lifetime.games > 0 ? Math.round(this.lifetime.totalScore / this.lifetime.games) : 0;
+  }
+
+  get playTimeLabel(): string {
+    const total = this.lifetime.playSeconds;
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m ${total % 60}s`;
+  }
+
+  get reflectRate(): string {
+    const l = this.lifetime;
+    return l.bulletsFired > 0 ? `${((l.bulletsReflected / l.bulletsFired) * 100).toFixed(1)}%` : '-';
   }
 
   // --- Run upgrade draft ---
@@ -914,7 +1033,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   pickUpgrade(index: number) {
     const choice = this.upgradeChoices[index];
     if (!choice || !this.showUpgradePicker) return;
+    const before = this.activeSynergies.map(s => s.id);
     this.runStacks[choice.id]++;
+    this.runStats.picks[choice.id] = (this.runStats.picks[choice.id] ?? 0) + 1;
+    for (const s of this.activeSynergies) {
+      if (!before.includes(s.id)) this.announceSynergy(s);
+    }
     if (choice.id === 'maxhp') {
       this.player.maxHealth += 25;
       this.player.health = Math.min(this.player.maxHealth, this.player.health + 25);
@@ -925,9 +1049,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sound.play('powerup');
   }
 
-  private onRunKill() {
-    const vampire = this.runStacks.vampire;
-    if (vampire > 0 && this.kills % 4 === 0 && this.player.health < this.player.maxHealth) {
+  private announceSynergy(def: SynergyDef) {
+    this.synergyToast = def;
+    this.runStats.synergies.push(def.id);
+    this.sound.play('wave');
+    this.createShockwave(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#ffd700', 220);
+    if (this.synergyToastTimer) clearTimeout(this.synergyToastTimer);
+    this.synergyToastTimer = setTimeout(() => { this.synergyToast = null; }, 4000);
+  }
+
+  private onRunKill(enemy?: Enemy) {
+    if (enemy?.type.startsWith('boss')) this.runStats.bossKills++;
+    const vampire = this.runStacks.vampire * (this.hasSynergy('bloodrush') ? 2 : 1);
+    if (this.runStacks.vampire > 0 && this.kills % 4 === 0 && this.player.health < this.player.maxHealth) {
       this.player.health = Math.min(this.player.maxHealth, this.player.health + vampire);
       this.createDamageNumber(this.player.x, this.player.y - 20, vampire, '#00ff88');
     }
@@ -1064,6 +1198,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadDifficulty();
     this.loadGraphicsQuality();
     this.loadMutator();
+    this.loadLifetimeStats();
     this.initPermanentUpgrades();
     await this.loadCoins(); // Load coins and upgrades from backend
     this.applyPermanentUpgrades();
@@ -1295,6 +1430,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.shockwaves = [];
     this.runStacks = emptyRunStacks();
     this.updateRunUpgradeList();
+    this.resetRunStats();
+    this.shotCounter = 0;
+    this.synergyToast = null;
     this.showUpgradePicker = false;
     this.lastPickerWave = 1;
     this.parryTimer = 0;
@@ -1628,6 +1766,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   update() {
+    this.runStats.ticks++;
+
     // Offer a run upgrade every second wave
     if (this.wave > this.lastPickerWave) {
       this.lastPickerWave = this.wave;
@@ -1891,6 +2031,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sound.play('gameover');
       this.totalGamesPlayed++;
       this.saveStats();
+      this.recordRunStats();
       this.checkAchievements();
       this.awardGameXp();
       this.checkDailyChallengeCompletion();
@@ -2320,6 +2461,10 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       const baseAngle = Math.atan2(dy, dx);
       const bulletCount = this.currentWeapon.bulletCount + Math.floor(this.weaponLevel / 3) + this.runStacks.multishot;
       const spread = this.runStacks.multishot > 0 ? Math.max(this.currentWeapon.spreadAngle, 0.1) : this.currentWeapon.spreadAngle;
+      this.shotCounter++;
+      const overcharged = this.hasSynergy('overdrive') && this.shotCounter % 8 === 0;
+      const volleyPierce = this.hasSynergy('volley') ? 2 : 0;
+      this.runStats.fired += bulletCount;
       
       for (let i = 0; i < bulletCount; i++) {
         const offset = (i - (bulletCount - 1) / 2) * spread;
@@ -2330,11 +2475,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
           y: this.player.y + this.player.height / 2,
           vx: Math.cos(angle) * this.currentWeapon.bulletSpeed,
           vy: Math.sin(angle) * this.currentWeapon.bulletSpeed,
-          radius: this.currentWeapon.bulletSize + this.weaponLevel * 0.3,
-          damage: this.currentWeapon.damage + this.weaponLevel * 5,
+          radius: (this.currentWeapon.bulletSize + this.weaponLevel * 0.3) * (overcharged ? 1.7 : 1),
+          damage: (this.currentWeapon.damage + this.weaponLevel * 5) * (overcharged ? 3 : 1),
           fromPlayer: true,
+          ...(overcharged ? { overcharged: true } : {}),
           ...((this.currentWeapon.pierce || this.runStacks.pierce)
-            ? { pierceRemaining: (this.currentWeapon.pierce ?? 0) + this.runStacks.pierce + this.getSkillValue('pierce') }
+            ? { pierceRemaining: (this.currentWeapon.pierce ?? 0) + this.runStacks.pierce + volleyPierce + this.getSkillValue('pierce') }
             : {})
         });
       }
@@ -2768,7 +2914,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
               this.enemies.splice(j, 1);
               this.kills++;
               if (enemy.type === 'splitter') this.spawnSplitChildren(enemy);
-              this.onRunKill();
+              this.onRunKill(enemy);
               this.createShockwave(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2,
                 enemy.type.startsWith('boss') ? '#ff4444' : '#ffffff', enemy.type.startsWith('boss') ? 160 : 45);
               this.sound.play(enemy.type === 'exploder' || volatileBlast || enemy.type.startsWith('boss') ? 'explosion' : 'kill');
@@ -2956,7 +3102,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
       const base = enemy.type.startsWith('boss') ? 1000 : enemy.type === 'miniboss' ? 300 : enemy.type === 'tank' ? 100 : 25;
       this.score += Math.floor(base * this.combo.multiplier * this.getDifficultyMultipliers().scoreBonus * this.mutatorScoreMultiplier);
       if (enemy.type === 'splitter') this.spawnSplitChildren(enemy);
-      this.onRunKill();
+      this.onRunKill(enemy);
       this.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff8800', 15);
       this.createShockwave(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffffff', 45);
       this.sound.play('kill');
@@ -3136,6 +3282,17 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dashDuration = 10;
     this.dashCooldown = Math.round(120 * (1 - Math.min(0.5, 0.2 * this.runStacks.dash))); // 2 seconds
     this.sound.play('dash');
+    if (this.hasSynergy('shockdash')) {
+      const px = this.player.x + this.player.width / 2;
+      const py = this.player.y + this.player.height / 2;
+      for (const e of this.enemies) {
+        if (Math.hypot(e.x + e.width / 2 - px, e.y + e.height / 2 - py) < 110) {
+          e.health -= 60;
+          this.createDamageNumber(e.x, e.y, 60, '#ffff00');
+        }
+      }
+      this.createShockwave(px, py, '#ffff00', 120);
+    }
     this.createShockwave(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#00ffff', 60);
     
     // Leave trail
@@ -3449,7 +3606,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     // Bullets
     const bulletGlow = !this.lowFx && this.bullets.length <= 120;
     this.bullets.forEach(bullet => {
-      const bulletColor = bullet.reflected ? '#ffffff' : bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
+      const bulletColor = bullet.overcharged ? '#ffd700' : bullet.reflected ? '#ffffff' : bullet.fromPlayer ? this.currentWeapon.color : '#ff0000';
       if (!this.lowFx && bullet.fromPlayer) {
         // Short fading trail behind player bullets
         this.ctx.strokeStyle = bulletColor;

@@ -80,6 +80,9 @@
       <span class="run-upgrade-chip" *ngFor="let u of runUpgradeList" [title]="t(u.def.name.hu, u.def.name.en) + ': ' + t(u.def.desc.hu, u.def.desc.en)">
         {{ u.def.icon }}<small>x{{ u.n }}</small>
       </span>
+      <span class="synergy-chip" *ngFor="let s of activeSynergies" [title]="t(s.desc.hu, s.desc.en)">
+        ✨ {{ s.icon }} {{ t(s.name.hu, s.name.en) }}
+      </span>
     </div>
     <div class="daily-challenge-hud" *ngIf="isDailyChallenge">
       🏅 {{ language === 'hu' ? 'NAPI KIHÍVÁS' : 'DAILY CHALLENGE' }}
@@ -340,8 +343,15 @@
       🌟 SKILLS
     </button>
     
-    <button 
-      *ngIf="!showShop && !gameStarted" 
+    <button
+      *ngIf="!showStats"
+      (click)="toggleStats()"
+      class="side-menu-btn stats-btn">
+      📊 {{ t('STATISZTIKA', 'STATS') }}
+    </button>
+
+    <button
+      *ngIf="!showShop && !gameStarted"  
       (click)="showShop = !showShop" 
       class="side-menu-btn shop-btn">
       🛒 {{ language === 'hu' ? 'BOLT' : 'SHOP' }}
@@ -408,6 +418,11 @@
     </div>
   </div>
 
+  <div class="synergy-toast" *ngIf="synergyToast as s">
+    ✨ {{ t('SZINERGIA!', 'SYNERGY!') }} {{ s.icon }} {{ t(s.name.hu, s.name.en) }}
+    <small>{{ t(s.desc.hu, s.desc.en) }}</small>
+  </div>
+
   <!-- Run upgrade picker -->
   <div class="upgrade-overlay" *ngIf="showUpgradePicker">
     <div class="upgrade-box">
@@ -420,6 +435,7 @@
           <div class="upgrade-name">{{ t(u.name.hu, u.name.en) }}</div>
           <div class="upgrade-desc">{{ t(u.desc.hu, u.desc.en) }}</div>
           <div class="upgrade-stack">{{ runStacks[u.id] }} → {{ runStacks[u.id] + 1 }} / {{ u.maxStacks }}</div>
+          <div class="upgrade-synergy" *ngIf="completesSynergy(u) as s">✨ {{ s.icon }} {{ t(s.name.hu, s.name.en) }}</div>
         </button>
       </div>
     </div>
@@ -514,6 +530,51 @@
     </div>
   </div>
   
+  <div class="achievements-panel stats-panel" *ngIf="showStats">
+    <div class="achievements-header">
+      <h2>📊 {{ t('STATISZTIKA', 'STATISTICS') }} 📊</h2>
+      <button (click)="toggleStats()" class="close-btn">✕</button>
+    </div>
+    <div class="stats-body">
+      <div class="stats-empty" *ngIf="lifetime.games === 0">
+        {{ t('Még nincs lejátszott játékod. Játssz egyet, és itt megjelennek az adataid!', 'No games played yet. Play one and your stats will show up here!') }}
+      </div>
+      <div class="stats-grid" *ngIf="lifetime.games > 0">
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.games }}</span><span class="stat-label">{{ t('Játék', 'Games played') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bestScore }}</span><span class="stat-label">{{ t('Legjobb pontszám', 'Best score') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bestWave }}</span><span class="stat-label">{{ t('Legjobb hullám', 'Best wave') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bestKills }}</span><span class="stat-label">{{ t('Legtöbb ölés egy futamban', 'Most kills in a run') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.totalKills }}</span><span class="stat-label">{{ t('Összes ölés', 'Total kills') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ averageScore }}</span><span class="stat-label">{{ t('Átlag pontszám', 'Average score') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bossKills }}</span><span class="stat-label">{{ t('Legyőzött boss', 'Bosses defeated') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ playTimeLabel }}</span><span class="stat-label">{{ t('Játékidő', 'Play time') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bulletsFired }}</span><span class="stat-label">{{ t('Kilőtt lövedék', 'Bullets fired') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ lifetime.bulletsReflected }}</span><span class="stat-label">{{ t('Visszavert lövedék', 'Bullets reflected') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ reflectRate }}</span><span class="stat-label">{{ t('Visszaverés / kilőtt', 'Reflected / fired') }}</span></div>
+        <div class="stat-tile"><span class="stat-value">{{ synergiesUnlockedCount }} / {{ synergies.length }}</span><span class="stat-label">{{ t('Szinergia felfedezve', 'Synergies discovered') }}</span></div>
+      </div>
+      <div class="stats-list" *ngIf="lifetime.games > 0">
+        <div class="stats-row"><span>🔫 {{ t('Kedvenc fegyver', 'Favorite weapon') }}</span><strong>{{ favoriteWeaponLabel }}</strong></div>
+        <div class="stats-row"><span>🧪 {{ t('Kedvenc mutátor', 'Favorite mutator') }}</span><strong>{{ favoriteMutatorLabel }}</strong></div>
+        <div class="stats-row"><span>⬆️ {{ t('Kedvenc fejlesztés', 'Favorite upgrade') }}</span><strong>{{ favoriteUpgradeLabel }}</strong></div>
+        <div class="stats-row" *ngFor="let diff of difficulties">
+          <span>{{ getDifficultyIcon(diff) }} {{ t('Legjobb', 'Best') }} - {{ getDifficultyName(diff) }}</span>
+          <strong>{{ lifetime.bestByDifficulty[diff] || '-' }}</strong>
+        </div>
+      </div>
+      <div class="stats-synergies">
+        <h3>✨ {{ t('Szinergiák', 'Synergies') }}</h3>
+        <div class="stats-synergy" *ngFor="let s of synergies" [class.found]="lifetime.synergiesUnlocked[s.id]">
+          <span class="syn-icon">{{ lifetime.synergiesUnlocked[s.id] ? s.icon : '❔' }}</span>
+          <span class="syn-text">
+            <strong>{{ lifetime.synergiesUnlocked[s.id] ? t(s.name.hu, s.name.en) : '???' }}</strong>
+            <small>{{ lifetime.synergiesUnlocked[s.id] ? t(s.desc.hu, s.desc.en) : t('Még nem fedezted fel', 'Not discovered yet') }}</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="achievements-panel" *ngIf="showAchievements">
     <div class="achievements-header">
       <h2>🎖️ ACHIEVEMENTS 🎖️</h2>
